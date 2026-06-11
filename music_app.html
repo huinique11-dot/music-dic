@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중학교 음악 수업 - 기악 백과사전</title>
+    <!-- 테일윈드 CSS 라이브러리 로드 (디자인용) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <!-- 헤더 -->
+    <header class="bg-indigo-600 text-white shadow-md p-6 text-center">
+        <h1 class="text-3xl font-bold">🎵 중학 기악 백과사전</h1>
+        <p class="text-sm mt-2 text-indigo-100">악기별 운지법, 코드, 그리고 수준별 추천 곡까지 한눈에!</p>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <main class="max-w-6xl mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+        
+        <!-- 왼쪽: 악기 선택 메뉴 -->
+        <section class="md:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-fit">
+            <h2 class="text-lg font-bold mb-4 text-gray-600 border-b pb-2">🎸 악기 선택</h2>
+            <div id="instrument-menu" class="space-y-2">
+                <!-- 자바스크립트에서 버튼이 동적으로 생성됩니다 -->
+            </div>
+        </section>
+
+        <!-- 오른쪽: 악기 상세 정보 표시 구역 -->
+        <section class="md:col-span-3 space-y-6">
+            
+            <!-- 악기 타이틀 및 소개 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div class="flex items-center justify-between">
+                    <h2 id="inst-name" class="text-2xl font-bold text-indigo-600">악기를 선택해주세요</h2>
+                    <span id="inst-type" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-semibold">분류</span>
+                </div>
+                <p id="inst-desc" class="text-gray-500 mt-2 text-sm leading-relaxed">왼쪽 메뉴에서 악기를 선택하면 상세 운지법과 5단계 추천 곡이 나타납니다.</p>
+            </div>
+
+            <!-- 핵심 운지 및 코드 팁 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold mb-3 flex items-center text-gray-700">
+                    <span class="mr-2">💡</span> 핵심 연주 가이드 (운지/코드)
+                </h3>
+                <div id="inst-fingering" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
+                    <!-- 운지 정보 삽입 -->
+                </div>
+            </div>
+
+            <!-- 5단계 수준별 추천 악곡 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold mb-4 flex items-center text-gray-700">
+                    <span class="mr-2">📊</span> 5단계 수준별 추천 악곡 Curriculum
+                </h3>
+                <div id="inst-levels" class="space-y-3">
+                    <!-- 레벨별 곡 정보 삽입 -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- 데이터 및 인터랙션 자바스크립트 -->
+    <script>
+        // 악기 데이터 백과사전 DB
+        const instrumentData = {
+            recorder: {
+                name: "리코더 (소프라노)",
+                type: "관악기",
+                desc: "중학교 음악 수업의 기본! 독일식과 바로크식 운지 차이에 주의하며, 깨끗하고 고운 호흡을 넣는 것이 핵심입니다.",
+                fingerings: [
+                    "• <b>기본 자세</b>: 왼손이 위, 오른손이 아래로 가게 잡습니다.",
+                    "• <b>'파(F)' 운지 주의</b>: 독일식(4번만 뗌)과 바로크식(4, 5, 6, 7번 막음) 구분을 확인하세요.",
+                    "• <b>높은음(서포트)</b>: 높은 미, 파 등은 뒷구멍을 절반만 여는 'サ(サ포트)' 주법이 필요합니다.",
+                    "• <b>소리 팁</b>: 따뜻한 바람을 부드럽게 불어넣어야 '삑사리'가 나지 않습니다."
+                ],
+                levels: [
+                    { lv: 1, title: "비행기", desc: "'시, 라, 솔' 3가지 음만 사용하여 호흡과 텅잉의 기초를 익힙니다." },
+                    { lv: 2, title: "나비야", desc: "낮은 '미'부터 '솔'까지 사용하며 손가락을 번갈아 움직이는 연습을 합니다." },
+                    { lv: 3, title: "에델바이스", desc: "높은 '도', '레' 음역대 확장과 함께 3박자 리듬감을 익힙니다." },
+                    { lv: 4, title: "할아버지의 낡은 시계", desc: "임시표(파# 또는 시b)가 등장하며, 다소 빠른 도약 운지를 훈련합니다." },
+                    { lv: 5, title: "언제나 몇 번이라도 (센과 치히로 OST)", desc: "높은음역대의 안정적인 호흡 조절과 섬세한 시김새 표현이 필요한 최고 난이도 곡입니다." }
+                ]
+            },
+            ukulele: {
+                name: "우쿨렐레",
+                type: "현악기",
+                desc: "4개의 줄로 구성되어 코드를 배우기 쉽고 경쾌한 소리를 냅니다. 손 끝 세우기와 올바른 스트로크 주법이 중요합니다.",
+                fingerings: [
+                    "• <b>C 코드</b>: 1번 줄의 3번째 프렛을 약지(3번) 손가락으로 누릅니다.",
+                    "• <b>F 코드</b>: 2번 줄 1프렛(검지), 4번 줄 2프렛(중지)을 동시에 누릅니다.",
+                    "• <b>G7 코드</b>: 2번 줄 1프렛, 3번 줄 2프렛, 1번 줄 2프렛을 삼각형 모양으로 누릅니다.",
+                    "• <b>소리 팁</b>: 손가락 끝을 세워 아랫줄을 건드리지 않아야 맑은 소리가 납니다."
+                ],
+                levels: [
+                    { lv: 1, title: "곰 세 마리", desc: "가장 쉬운 <b>C 코드</b> 하나만 사용하여 다운 스트로크 리듬을 맞춥니다." },
+                    { lv: 2, title: "조개껍질 묶어", desc: "주요 3화음인 <b>C, F, G7 코드</b>의 전환을 자연스럽게 연습합니다." },
+                    { lv: 3, title: "제주도 푸른 밤", desc: "Am, Dm 등 마이너 코드가 추가되며 <b>4비트 고고 주법</b>을 적용합니다." },
+                    { lv: 4, title: "너의 의미", desc: "우쿨렐레의 꽃인 <b>칼립소(Calypso) 주법</b>을 활용해 리드미컬하게 연주합니다." },
+                    { lv: 5, title: "바람이 분다", desc: "아르페지오(뜯기) 주법과 하이코드가 섞인 복합 연주에 도전합니다." }
+                ]
+            },
+            kalimba: {
+                name: "칼림바",
+                type: "타악기 (선율)",
+                desc: "오르골 같은 영롱한 소리를 내는 악기입니다. 키에 적힌 숫자나 알파벳을 보며 양손 엄지손톱으로 튕겨 연주합니다.",
+                fingerings: [
+                    "• <b>기본 조율</b>: 가운데 긴 키가 도(1/C)이며, 좌우로 번갈아가며 음이 높아집니다.",
+                    "• <b>타현 주법</b>: 엄지손가락 살이 아닌, 손톱 끝으로 가볍게 밀어내듯 튕깁니다.",
+                    "• <b>화음(글리산도)</b>: 인접한 키를 스르륵 긁으면 아름다운 아르페지오 화음이 됩니다.",
+                    "• <b>소리 팁</b>: 손톱이 너무 짧으면 이쁜 소리가 나지 않으니 약간 기르는 것이 좋습니다."
+                ],
+                levels: [
+                    { lv: 1, title: "학교 종", desc: "도레미파솔 범위 안에서 단음 위주로 양손 위치를 익히는 단계입니다." },
+                    { lv: 2, title: "작은 별", desc: "좌우 건반을 번갈아 이동하며 시선과 엄지손가락의 협응력을 기릅니다." },
+                    { lv: 3, title: "할아버지의 낡은 시계", desc: "멜로디와 함께 2개의 음을 동시에 누르는 <b>기초 화음</b> 연주를 시작합니다." },
+                    { lv: 4, title: "언제나 몇 번이라도", desc: "3박자 아르페지오 반주와 멜로디를 동시에 표현하는 중급 단계 곡입니다." },
+                    { lv: 5, title: "캐논 변주곡 (Canon)", desc: "빠른 16분음표 연타와 넓은 도약, 복잡한 코드 반주가 합쳐진 최종 보스 곡입니다." }
+                ]
+            },
+            danso: {
+                name: "단소",
+                type: "국악기 (관악기)",
+                desc: "전통 대나무 관악기로, 전통 기보법인 '정간보'를 읽고 '태-황-무-임-중' 5음을 소리 내는 것이 목표입니다.",
+                fingerings: [
+                    "• <b>소리 내기</b>: 아랫입술 중앙에 취구를 대고, '유' 발음 모양으로 바람을 반만 불어넣습니다.",
+                    "• <b>지공(구멍) 막기</b>: 뒤쪽 1구멍(엄지), 앞쪽 2구멍(검지), 3구멍(중지)을 주로 사용합니다.",
+                    "• <b>오음계</b>: 중(仲), 임(林), 무(無), 황(黃), 태(太)의 기본 손모양을 숙지합니다.",
+                    "• <b>주의 사항</b>: 침이 고이면 소리가 안 나니 자주 털어주어야 합니다."
+                ],
+                levels: [
+                    { lv: 1, title: "비행기 (태정태 연습곡)", desc: "손가락 변화가 적은 3음(태, 황, 무) 중심으로 소리 내기에 집중합니다." },
+                    { lv: 2, title: "학교 종", desc: "전통 5음(태황무임중)을 모두 깨끗하게 소리 내며 정간보 리듬을 읽습니다." },
+                    { lv: 3, title: "아리랑", desc: "국악의 대표 곡으로, 완만한 호흡과 경기민요 특유의 가락 흐름을 탑니다." },
+                    { lv: 4, title: "도라지타령", desc: "세마치장단에 맞춰 비교적 빠른 손가락 제어와 음의 도약을 연습합니다." },
+                    { lv: 5, title: "홀로아리랑 또는 상령산", desc: "높은 음역대(청성)의 거친 소리를 잡고, 국악 고유의 농음(시김새)을 표현합니다." }
+                ]
+            }
+        };
+
+        // 앱 구동 초기화 함수
+        function initApp() {
+            const menuContainer = document.getElementById('instrument-menu');
+            
+            // 메뉴 버튼 동적 생성
+            Object.keys(instrumentData).forEach((key, index) => {
+                const inst = instrumentData[key];
+                const button = document.createElement('button');
+                button.className = `w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                    index === 0 ? 'bg-indigo-600 text-white shadow-sm' : 'hover:bg-gray-100 text-gray-700'
+                }`;
+                button.innerText = `🎵 ${inst.name}`;
+                button.onclick = (e) => selectInstrument(key, e.target);
+                menuContainer.appendChild(button);
+            });
+
+            // 첫 번째 악기 자동 선택
+            selectInstrument(Object.keys(instrumentData)[0], menuContainer.children[0]);
+        }
+
+        // 악기 선택 시 화면 갱신
+        function selectInstrument(key, targetButton) {
+            // 버튼 스타일 초기화 및 선택 효과
+            const buttons = document.querySelectorAll('#instrument-menu button');
+            buttons.forEach(btn => {
+                btn.className = "w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer hover:bg-gray-100 text-gray-700";
+            });
+            targetButton.className = "w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer bg-indigo-600 text-white shadow-sm";
+
+            const data = instrumentData[key];
+
+            // 상단 기본 정보 반영
+            document.getElementById('inst-name').innerText = data.name;
+            document.getElementById('inst-type').innerText = data.type;
+            document.getElementById('inst-desc').innerText = data.desc;
+
+            // 가이드 팁 반영
+            const fingeringContainer = document.getElementById('inst-fingering');
+            fingeringContainer.innerHTML = data.fingerings.map(f => `<p class="bg-gray-50 p-3 rounded-lg border border-gray-100">${f}</p>`).join('');
+
+            // 5단계 곡 정보 반영
+            const levelsContainer = document.getElementById('inst-levels');
+            const bgColors = ['bg-emerald-50 text-emerald-700', 'bg-teal-50 text-teal-700', 'bg-amber-50 text-amber-700', 'bg-orange-50 text-orange-700', 'bg-rose-50 text-rose-700'];
+            const borderColors = ['border-emerald-200', 'border-teal-200', 'border-amber-200', 'border-orange-200', 'border-rose-200'];
+            const badgeColors = ['bg-emerald-500', 'bg-teal-500', 'bg-amber-500', 'bg-orange-500', 'bg-rose-500'];
+
+            levelsContainer.innerHTML = data.levels.map((l, i) => `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center p-4 border rounded-xl ${bgColors[i]} ${borderColors[i]}">
+                    <span class="text-xs font-bold text-white px-2 py-1 rounded-md mb-2 sm:mb-0 sm:mr-4 ${badgeColors[i]} shrink-0">Level ${l.lv}</span>
+                    <div class="grow">
+                        <h4 class="font-bold text-gray-900">${l.title}</h4>
+                        <p class="text-xs text-gray-600 mt-1">${l.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 페이지 로드 시 앱 실행
+        window.onload = initApp;
+    </script>
+</body>
+</html>
