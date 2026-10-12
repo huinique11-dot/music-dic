@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>음악 취향 연구 활동지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root { --ink: #111; --soft: #f3f3f3; --line: #222; --accent: #e8338a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; color: var(--ink); background: #d9d9de; }
+.display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; }
+
+/* ===== 교사용 패널 (인쇄 안 됨) ===== */
+.panel { position: sticky; top: 0; z-index: 5; background: #111; color: #fff; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 14px; }
+.panel b { color: #fff36b; }
+.panel label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.panel button { font: inherit; font-weight: 700; padding: 6px 14px; border-radius: 8px; border: 0; cursor: pointer; background: #ff4fa3; color: #fff; }
+.panel .hint { flex-basis: 100%; font-size: 12px; color: #ccc; }
+.sheets { padding: 20px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+body.editing .page [data-edit] { outline: 1px dashed #3d5afe; }
+
+/* ===== 종이 ===== */
+.page { width: 148mm; height: 210mm; background: #fff; overflow: hidden; position: relative; padding: 7mm 8mm; display: flex; flex-direction: column; gap: 2.6mm; box-shadow: 0 2px 10px rgba(0,0,0,.15); font-size: 8.6pt; line-height: 1.45; }
+.sheet2up { width: 297mm; height: 210mm; display: flex; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+.sheet2up .page { box-shadow: none; }
+.sheet2up .page + .page { border-left: 0.2mm dashed #aaa; }
+
+.top { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 0.6mm solid var(--line); padding-bottom: 1.6mm; }
+.top .title { font-size: 15pt; line-height: 1.1; }
+.top .kicker { font-size: 7pt; font-weight: 900; letter-spacing: .5mm; color: var(--accent); }
+.who { font-size: 8.5pt; white-space: nowrap; }
+.who u { display: inline-block; width: 9mm; border-bottom: 0.3mm solid #000; text-decoration: none; }
+.who u.l { width: 20mm; }
+.box { border: 0.4mm solid var(--line); border-radius: 2mm; padding: 2mm 2.6mm; }
+.box h3 { margin: 0 0 1.4mm; font-family: 'Black Han Sans', sans-serif; font-weight: 400; font-size: 11pt; display: flex; justify-content: space-between; align-items: baseline; }
+.box h3 small { font-family: 'Noto Sans KR'; font-size: 7pt; font-weight: 400; color: #555; }
+.num { display: inline-grid; place-items: center; width: 5.2mm; height: 5.2mm; border-radius: 50%; background: #111; color: #fff; font-size: 8pt; margin-right: 1.4mm; font-family: 'Noto Sans KR'; font-weight: 900; }
+.lines { display: flex; flex-direction: column; }
+.lines i { display: block; height: 6.6mm; border-bottom: 0.25mm solid #999; }
+.fill { display: inline-block; min-width: 18mm; border-bottom: 0.25mm solid #777; height: 4.2mm; vertical-align: bottom; }
+.fill.w { min-width: 34mm; } .fill.ww { min-width: 60mm; }
+.grow { flex: 1; }
+.muted { color: #555; }
+.tiny { font-size: 7pt; color: #555; }
+.pick { display: flex; gap: 1.6mm; flex-wrap: wrap; }
+.pick span { border: 0.3mm solid #444; border-radius: 99px; padding: .2mm 2mm; font-size: 8pt; }
+
+/* ① 취향 지도 색칠 */
+.bars { display: grid; grid-template-columns: 24mm 1fr; gap: 1.2mm 2mm; align-items: center; }
+.cells { display: grid; grid-template-columns: repeat(10, 1fr); border: 0.3mm solid #333; height: 4.6mm; }
+.cells i { border-left: 0.2mm solid #bbb; }
+.cells i:first-child { border-left: 0; }
+.scale { display: grid; grid-template-columns: repeat(10, 1fr); font-size: 6pt; color: #777; text-align: right; }
+
+/* ③ 검증표 */
+table.v { width: 100%; border-collapse: collapse; font-size: 8pt; }
+table.v th, table.v td { border: 0.25mm solid #555; padding: 1mm 1.2mm; vertical-align: middle; }
+table.v th { background: var(--soft); font-weight: 700; font-size: 7.4pt; }
+table.v td.c { text-align: center; width: 9.5mm; font-size: 9pt; }
+table.v td.why { height: 11.4mm; }
+
+/* 친구 댓글 */
+.cmt { border: 0.35mm dashed #444; border-radius: 2mm; padding: 1.8mm 2.4mm; display: flex; flex-direction: column; gap: 1.2mm; }
+.cmt .head { display: flex; justify-content: space-between; font-size: 7.6pt; }
+.cmt p { margin: 0; line-height: 2.05; font-size: 8.4pt; }
+
+/* 선택 활동지 */
+.paper-tag { display: inline-grid; place-items: center; width: 11mm; height: 11mm; border-radius: 2mm; background: #111; color: #fff; font-family: 'Black Han Sans'; font-size: 16pt; }
+.study { background: var(--soft); border-radius: 2mm; padding: 2mm 2.6mm; }
+.study dl { margin: 0; display: grid; grid-template-columns: 17mm 1fr; gap: 1mm 2mm; }
+.study dt { font-weight: 900; }
+.study dd { margin: 0; }
+.cite { font-size: 6.6pt; color: #555; line-height: 1.35; }
+.q { border-left: 1.2mm solid var(--accent); padding: .6mm 0 .6mm 2.4mm; }
+.q b { display: block; }
+.frame { background: #fff8d6; border-radius: 1.6mm; padding: 1.6mm 2.2mm; font-size: 8.2pt; }
+.flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6mm; }
+.flow div { border: 0.3mm solid #333; border-radius: 2mm; padding: 1.4mm 1.6mm; font-size: 7.4pt; line-height: 1.4; position: relative; }
+.flow div b { display: block; font-size: 8pt; margin-bottom: .6mm; }
+.flow div:not(:last-child)::after { content: '▶'; position: absolute; right: -2.9mm; top: 40%; font-size: 6pt; }
+ul.trend { margin: 0; padding-left: 4mm; }
+ul.trend li { margin-bottom: .6mm; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
+.staple { position: absolute; top: 2.4mm; left: 3mm; font-size: 6pt; color: #999; }
+
+@media print {
+  @page { size: A5 portrait; margin: 0; }
+  body { background: #fff; }
+  body.landscape-print { }
+  .panel { display: none !important; }
+  .sheets { padding: 0; gap: 0; display: block; }
+  .page, .sheet2up { box-shadow: none; break-after: page; page-break-after: always; margin: 0; }
+  body.editing .page [data-edit] { outline: none; }
+}
+</style>
+<style id="pageSize"></style>
+</head>
+<body>
+
+<div class="panel" id="panel">
+  <b>🖨️ 음악 취향 연구 활동지</b>
+  <span>인쇄할 활동지:</span>
+  <label><input type="checkbox" value="base" checked> 기본 활동지(양면)</label>
+  <label><input type="checkbox" value="papers" checked> 논문과의 대화 A~G</label>
+  <label><input type="checkbox" value="industry" checked> 취향별 산업 5종</label>
+  <span>|</span>
+  <label><input type="radio" name="fmt" value="a5" checked> A5 용지</label>
+  <label><input type="radio" name="fmt" value="a4"> A4에 2장씩(인쇄 후 반 자르기)</label>
+  <span>|</span>
+  <label><input type="checkbox" id="editT"> ✏️ 글자 고치기</label>
+  <button onclick="window.print()">인쇄하기</button>
+  <div class="hint">· 인쇄 창에서 <b>여백: 없음</b>, <b>배율: 100%(실제 크기)</b>로 설정하세요. · 기본 활동지는 <b>양면 인쇄</b>(A5: 긴 쪽 넘김 / A4 2장씩: 짧은 쪽 넘김). 논문·산업 활동지는 단면. · '글자 고치기'를 켜면 활동지 문구를 클릭해서 바로 고칠 수 있어요(새로고침하면 원래대로).</div>
+</div>
+<div class="sheets" id="sheets"></div>
+
+<script>
+/* ===== 기본 활동지 ===== */
+const DIMS = [['🌙', '잔잔함', 'Mellow'], ['🍃', '소박함', 'Unpretentious'], ['🎻', '세련됨', 'Sophisticated'], ['🔥', '강렬함', 'Intense'], ['⚡', '트렌디함', 'Contemporary']];
+const header = (kicker, title, extra = '') => `
+  <div class="top"><div><div class="kicker">${kicker}</div><div class="title display" data-edit>${title}</div></div>
+  <div class="who">3학년 <u></u>반 <u></u>번 이름 <u class="l"></u>${extra}</div></div>`;
+
+const baseFront = () => `<div class="page">
+  ${header('나의 음악 취향 연구소 · 1차시', '나의 음악 취향 연구 보고서')}
+  <div class="box"><h3><span><span class="num">①</span>나의 취향 지도</span><small>앱 점수만큼 칸을 색칠 (1칸 = 10점)</small></h3>
+    <div class="bars">${DIMS.map(d => `<div>${d[0]} <b>${d[1]}</b></div><div class="cells">${'<i></i>'.repeat(10)}</div>`).join('')}
+      <div></div><div class="scale">${[10,20,30,40,50,60,70,80,90,100].map(n => `<span>${n}</span>`).join('')}</div></div>
+    <div style="margin-top:1.4mm">나의 대표 취향(○표): <span class="pick" style="display:inline-flex">${DIMS.map(d => `<span>${d[0]} ${d[1]}</span>`).join('')}</span></div>
+  </div>
+  <div class="box"><h3><span><span class="num">②</span>근거 데이터</span><small>내가 입력한 내용을 옮겨 적어요</small></h3>
+    <div>좋아하는 장르: <span class="fill ww"></span></div>
+    <div style="margin-top:1.2mm">끌리는 소리 — 템포 <span class="fill"></span> · 에너지 <span class="fill"></span> · 분위기 <span class="fill"></span></div>
+    <div style="margin-top:1.2mm">귀 기울이는 요소: <span class="fill w"></span> &nbsp; 최애곡: <span class="fill w"></span></div>
+    <div style="margin-top:1.2mm">✨ 소름 순간 — 곡 <span class="fill w"></span> 구간 <span class="fill"></span></div>
+    <div style="margin-top:1.2mm">그때의 느낌: <span class="fill ww" style="min-width:100mm"></span></div>
+  </div>
+  <div class="box grow"><h3><span><span class="num">③</span>검증하기</span><small>앱의 분석이 나와 맞나요? ✓ 표시하고 이유를 써요</small></h3>
+    <table class="v"><tr><th style="width:28mm">앱의 분석</th><th>맞아요</th><th>조금<br>달라요</th><th>아니<br>에요</th><th>이유 / 진짜 나는?</th></tr>
+      ${[['🗺️ 나의 취향 지도', ''], ['🔊 내가 끌리는 소리', ''], ['✨ 소름의 과학', ''], ['🌱 열여섯의 취향', ''], ['🔥 강렬한 음악과 나', '(앱에 나온 사람만)']]
+        .map(([t, s]) => `<tr><td><b>${t}</b>${s ? `<div class="tiny">${s}</div>` : ''}</td><td class="c">□</td><td class="c">□</td><td class="c">□</td><td class="why"></td></tr>`).join('')}
+    </table>
+  </div>
+</div>`;
+
+const baseBack = () => `<div class="page">
+  ${header('나의 음악 취향 연구소 · 1차시', '연구 정리 & 친구 댓글')}
+  <div class="box"><h3><span><span class="num">④⑤</span>내가 고른 활동지</span><small>뒤에 함께 묶어 제출해요</small></h3>
+    <div>④ 논문: <span class="pick" style="display:inline-flex">${'ABCDEFG'.split('').map(x => `<span>${x}</span>`).join('')}</span> &nbsp; ⑤ 산업: <span class="pick" style="display:inline-flex">${DIMS.map(d => `<span>${d[0]}</span>`).join('')}</span></div>
+  </div>
+  <div class="box"><h3><span><span class="num">⑥</span>새롭게 알게 된 나</span><small>결론 — 이번 연구로 알게 된 나, 앞으로 해 보고 싶은 것</small></h3>
+    <div class="lines">${'<i></i>'.repeat(4)}</div>
+  </div>
+  <div class="box grow" style="display:flex;flex-direction:column;gap:1.8mm">
+    <h3><span><span class="num">⑦</span>친구 댓글 · NEW DISCOVERY</span><small>나와 <b>다른 취향</b> 친구가 읽고 써 줘요</small></h3>
+    ${[1, 2, 3].map(n => `<div class="cmt grow"><div class="head"><span><b>댓글 ${n}</b> · 쓴 사람 <span class="fill"></span></span><span>내 취향: ${DIMS.map(d => d[0]).join(' ')}</span></div>
+      <p><b>[NEW DISCOVERY]</b> <span class="fill"></span>의 보고서를 읽고 <span class="fill w"></span>을/를 새롭게 알게 되었어. 나도 들어보니 <span class="fill ww"></span> 때문에 관심이 가!</p></div>`).join('')}
+  </div>
+</div>`;
+
+/* ===== 논문과의 대화 A~G ===== */
+const PAPERS = [
+  { tag: 'A', q: '음악 취향에도 지도가 있을까?', who: 'Rentfrow & Gosling (2003)',
+    cite: 'Rentfrow, P. J., & Gosling, S. D. (2003). The do re mi\'s of everyday life: The structure and personality correlates of music preferences. Journal of Personality and Social Psychology, 84(6).',
+    how: '미국 대학생 수천 명에게 여러 음악 장르를 얼마나 좋아하는지 묻고, 함께 좋아하는 장르끼리 묶어 보았어요.',
+    found: '사람들의 취향은 몇 개의 큰 묶음(예: 성찰적·복합적인 음악, 강렬·반항적인 음악, 경쾌한 음악, 에너지·리듬 음악)으로 나뉘었어요. 이후 연구에서 지금의 다섯 가지 취향 축으로 발전했어요.',
+    easy: '록을 좋아하는 사람은 메탈도 좋아할 가능성이 높은 것처럼, 장르는 따로 놀지 않고 무리 지어 움직여요.',
+    ask: ['내가 좋아하는 장르들은 같은 취향 축에 모여 있나요, 여러 축에 흩어져 있나요?', '어느 묶음에도 딱 맞지 않는 나만의 취향이 있나요?'],
+    frame: '이 연구에서는 음악 취향이 몇 가지 묶음으로 나뉜다고 했다. 내 취향 지도를 보면 ______ (모여 있다/흩어져 있다). 그 이유는 ______.' },
+  { tag: 'B', q: '53개 나라 사람들의 취향은 닮았을까?', who: 'Greenberg et al. (2022)',
+    cite: 'Greenberg, D. M., Wride, S. J., Snowden, D. A., Spathis, D., Potter, J., & Rentfrow, P. J. (2022). Universals and variations in musical preferences: A study of preferential reactions to Western music in 53 countries. Journal of Personality and Social Psychology, 122(2).',
+    how: '전 세계 53개 나라의 많은 사람들에게 서양 대중음악의 짧은 구간들을 들려주고 얼마나 좋아하는지 반응을 조사했어요.',
+    found: '나라와 문화가 달라도 취향이 묶이는 구조(다섯 가지 취향 축)는 비슷하게 나타났어요. 하지만 나라마다 차이도 있었어요.',
+    easy: '사는 곳이 달라도 "이 노래를 좋아하면 저 노래도 좋아하는" 패턴은 꽤 닮았어요.',
+    ask: ['이 결과가 한국 중학생인 나에게도 맞을까요?', '서양 음악만 들려준 연구라는 점은 어떤 한계가 있을까요? (K-Pop, 국악은?)'],
+    frame: '이 연구에서는 53개 나라에서 비슷한 취향 구조가 나타났다고 했다. 나는 이 결과가 한국 청소년에게 ______ 생각한다. 왜냐하면 ______.' },
+  { tag: 'C', q: '나는 어떤 "소리"에 끌릴까?', who: 'Greenberg et al. (2015)',
+    cite: 'Greenberg, D. M., Baron-Cohen, S., Stillwell, D. J., Kosinski, M., & Rentfrow, P. J. (2015). Musical preferences are linked to cognitive styles. PLOS ONE, 10(7).',
+    how: '수천 명에게 여러 장르의 짧은 음악을 들려주고 선호를 물은 뒤, 음악의 속성(에너지, 밝음·어두움, 감정의 깊이 등)을 함께 분석했어요.',
+    found: '장르 이름보다 소리의 속성에 따라 좋아하는 음악이 갈렸어요. 강렬하고 에너지 넘치는 소리를 좋아하는 사람도, 잔잔하고 감정이 깊은 소리를 좋아하는 사람도 있었어요.',
+    easy: '"발라드 좋아해"보다 "느리고 감정이 깊은 소리를 좋아해"가 내 취향을 더 정확하게 설명할 수 있어요.',
+    ask: ['내 최애곡들의 공통된 소리의 속성은 무엇인가요? (템포, 에너지, 분위기, 음색)', '장르는 다르지만 속성이 비슷한 곡이 내 플레이리스트에 있나요?'],
+    frame: '이 연구에서는 사람마다 끌리는 소리의 속성이 다르다고 했다. 내 최애곡들의 공통점은 ______이고, 나는 특히 ______ 소리에 끌린다.' },
+  { tag: 'D', q: '소름 돋는 순간, 뇌에서는 무슨 일이?', who: 'Salimpoor et al. (2011)',
+    cite: 'Salimpoor, V. N., Benovoy, M., Larcher, K., Dagher, A., & Zatorre, R. J. (2011). Anatomically distinct dopamine release during anticipation and experience of peak emotion to music. Nature Neuroscience, 14(2).',
+    how: '참가자들이 직접 고른 "소름 돋는 음악"을 들을 때 뇌를 촬영(PET, fMRI)해서 변화를 살펴보았어요.',
+    found: '음악이 절정에 이르는 순간 뇌에서 기분 좋은 물질인 도파민이 나왔어요. 놀랍게도 절정 직전 "곧 온다!" 하고 기대하는 순간에도 뇌의 다른 부분에서 도파민이 나왔어요.',
+    easy: '좋아하는 후렴이 나오기 직전의 두근거림, 그것도 뇌가 주는 보상이에요.',
+    ask: ['내 소름 순간 바로 앞에서는 어떤 소리가 나오나요? (빌드업, 쉼, 악기 추가 등)', '처음 들었을 때도 소름이 돋았나요, 여러 번 듣고 나서였나요?'],
+    frame: '이 연구에서는 음악의 절정과 그 직전의 기대에서 도파민이 나온다고 했다. 내 소름 순간 직전에는 ______ 소리가 나오는데, 그때 나는 ______을/를 기대한다.' },
+  { tag: 'E', q: '음악 취향은 나이가 들면 바뀔까?', who: 'Bonneville-Roussy et al. (2013)',
+    cite: 'Bonneville-Roussy, A., Rentfrow, P. J., Xu, M. K., & Potter, J. (2013). Music through the ages: Trends in musical engagement and preferences from adolescence through middle adulthood. Journal of Personality and Social Psychology, 105(4).',
+    how: '10대부터 중년까지 수십만 명의 음악 듣는 습관과 취향을 나이별로 비교했어요.',
+    found: '청소년기에 음악을 가장 많이, 가장 중요하게 여겼어요. 나이가 들수록 듣는 시간은 줄고, 강렬하고 트렌디한 음악보다 잔잔하거나 세련된 음악을 좋아하는 경향이 나타났어요.',
+    easy: '지금의 내가 음악에 가장 진심인 시기! 그리고 지금의 취향이 평생 그대로는 아닐 수 있어요.',
+    ask: ['초등학생 때의 나와 지금의 나, 음악 취향이 어떻게 달라졌나요?', '10년 뒤 스물여섯 살의 나는 어떤 음악을 듣고 있을까요?'],
+    frame: '이 연구에서는 나이가 들면 음악 취향이 바뀐다고 했다. 초등학생 때 나는 ______을/를 들었고 지금은 ______을/를 듣는다. 10년 뒤의 나는 ______.' },
+  { tag: 'F', q: '센 음악을 좋아하면 화가 많은 사람일까?', who: 'Thompson et al. (2019)',
+    cite: 'Thompson, W. F., Geeves, A. M., & Olsen, K. N. (2019). Who enjoys listening to violent music and why? Psychology of Popular Media Culture, 8(3).',
+    how: '데스메탈(아주 강렬한 메탈)을 좋아하는 사람과 좋아하지 않는 사람에게 폭력적인 가사의 곡을 들려주고 어떤 감정을 느끼는지 조사했어요.',
+    found: '팬들은 분노보다 힘, 기쁨, 평온 같은 긍정적인 감정을 주로 느꼈어요. 센 음악을 좋아한다고 공격적인 사람이라고 볼 수는 없었어요.',
+    easy: '시끄럽고 거친 음악이 누군가에게는 마음을 편하게 해 주는 음악일 수 있어요.',
+    ask: ['강렬한 음악(록, 메탈, 강한 비트)을 들을 때 나는 어떤 감정을 느끼나요?', '"이런 음악 듣는 사람은 ~할 거야"라는 고정관념을 들어 본 적 있나요?'],
+    frame: '이 연구에서는 격한 음악을 즐기는 사람들이 긍정적인 감정을 느낀다고 했다. 나는 ______ 음악을 들을 때 ______을/를 느낀다. 음악에 대한 고정관념에 대해 나는 ______.' },
+  { tag: 'G', q: '같은 노래를 좋아하면 친해질까?', who: 'Boer et al. (2011)',
+    cite: 'Boer, D., Fischer, R., Strack, M., Bond, M. H., Lo, E., & Lam, J. (2011). How shared preferences in music create bonds between people: Values as the missing link. Personality and Social Psychology Bulletin, 37(9).',
+    how: '여러 나라의 청소년과 청년들에게 다른 사람의 음악 취향을 알려 주고, 그 사람에 대한 인상과 호감을 조사했어요.',
+    found: '음악 취향이 같으면 "가치관도 비슷하겠다"고 느끼고 더 가까워지고 싶어 했어요. 특히 젊은 사람들에게서 이런 경향이 강했어요.',
+    easy: '"너도 그 노래 좋아해?" 한마디가 친구가 되는 시작일 수 있어요.',
+    ask: ['음악 덕분에 친해진 친구가 있나요?', '나와 취향이 다른 친구의 음악을 들어 보면 무엇을 새로 알게 될까요?'],
+    frame: '이 연구에서는 음악 취향이 같으면 서로 가까워진다고 했다. 나는 ______ 덕분에 ______와/과 가까워진 경험이 있다. 취향이 다른 친구와는 ______.' }
+];
+const paperPage = p => `<div class="page">
+  <div class="top"><div style="display:flex;gap:2.4mm;align-items:center"><span class="paper-tag">${p.tag}</span><div><div class="kicker">④ 논문과의 대화</div><div class="title display" data-edit>${p.q}</div></div></div>
+  <div class="who">3학년 <u></u>반 <u></u>번<br>이름 <u class="l"></u></div></div>
+  <div class="study"><div style="font-weight:900;margin-bottom:1mm">📄 ${p.who}</div><dl>
+    <dt>어떻게?</dt><dd data-edit>${p.how}</dd><dt>무엇을 발견?</dt><dd data-edit>${p.found}</dd><dt>쉽게 말하면</dt><dd data-edit><b>${p.easy}</b></dd></dl></div>
+  <div class="q"><b>🤔 생각해 보기</b>${p.ask.map((a, k) => `<div data-edit>${k + 1}. ${a}</div>`).join('')}</div>
+  <div class="lines" style="margin-top:-1mm">${'<i></i>'.repeat(3)}</div>
+  <div class="frame"><b>✍️ 문장 틀</b> <span data-edit>${p.frame}</span></div>
+  <div class="box grow"><h3><span>✍️ 논문과 나의 대화</span><small>문장 틀을 활용해 3문장 이상</small></h3><div class="lines">${'<i></i>'.repeat(9)}</div></div>
+  <div class="cite">${p.cite}</div>
+</div>`;
+
+/* ===== 취향별 산업 ===== */
+const INDUSTRY = [
+  { d: 0, q: '플레이리스트와 OST의 시대',
+    flow: [['만들기', '싱어송라이터, 작곡가, 프로듀서'], ['알리기', '드라마·영화 OST, "공부할 때 듣는" 같은 상황별 플레이리스트'], ['즐기기', '스트리밍, 이어폰 감상, 소극장 콘서트'], ['돈이 되는 곳', '음원 스트리밍 수익, OST, 저작권료, 콘서트']],
+    trend: ['스트리밍 앱의 추천 알고리즘과 플레이리스트가 어떤 곡이 발견될지를 크게 좌우해요.', '드라마가 해외에서 인기를 얻으면 OST도 함께 퍼져요.', '시간이 지나 다시 인기를 얻는 "역주행"과 계절마다 돌아오는 "시즌송"이 있어요.'],
+    good: '언제든 내 기분에 맞는 음악을 쉽게 찾을 수 있다', worry: '스트리밍 1회당 창작자에게 돌아가는 수익이 작다' },
+  { d: 1, q: '인디·포크·트로트의 무대',
+    flow: [['만들기', '인디 뮤지션, 싱어송라이터, 작은 음반사(레이블)'], ['알리기', '버스킹, SNS·유튜브 라이브 영상, TV 음악·오디션 프로그램'], ['즐기기', '소규모 공연장(라이브 클럽), 지역 축제, 행사'], ['돈이 되는 곳', '공연 티켓, 음원, 행사 출연, 크라우드펀딩']],
+    trend: ['대형 기획사 없이도 SNS와 유튜브로 직접 팬을 만나는 인디 뮤지션이 많아졌어요.', '트로트는 TV 오디션 프로그램을 통해 새로운 세대의 팬을 얻었어요.', '지역 축제와 작은 공연장이 이 음악들의 중요한 무대예요.'],
+    good: '대형 기획사가 아니어도 다양한 음악이 살아남을 수 있다', worry: '작은 공연장 운영이 어렵고 뮤지션의 수입이 불안정하다' },
+  { d: 2, q: '클래식·재즈·국악이 관객을 만나는 길',
+    flow: [['만들기', '작곡가, 연주자, 오케스트라, 재즈 밴드, 국악단'], ['알리기', '국제 콩쿠르, 공연 실황 영상, 다른 장르와의 협업(퓨전)'], ['즐기기', '공연장 연주회, 재즈·국악 페스티벌, 클래식 스트리밍'], ['돈이 되는 곳', '공연 티켓, 공공 지원·기업 후원, 음반, 음악 교육']],
+    trend: ['국제 콩쿠르에서 우승한 젊은 한국 연주자들 덕분에 클래식 공연에 대한 관심이 커졌어요.', '퓨전국악이 광고·관광 홍보 영상으로 화제가 되며 국악이 새롭게 주목받았어요.', '공공 기관의 지원과 기업 후원이 이 음악들을 지탱하는 큰 힘이에요.'],
+    good: '오래된 음악 전통이 새로운 방식으로 이어진다', worry: '관객층을 넓히기 어렵고 지원에 많이 기대야 한다' },
+  { d: 3, q: '밴드 붐과 라이브의 힘',
+    flow: [['만들기', '밴드, 공연 기획사, 음향·조명 엔지니어'], ['알리기', '라이브 클립 영상, 밴드 오디션 프로그램, 페스티벌 라인업 발표'], ['즐기기', '라이브 클럽, 록 페스티벌, 다 함께 부르는 떼창'], ['돈이 되는 곳', '공연·페스티벌 티켓, 밴드 굿즈, 페스티벌 후원사']],
+    trend: ['최근 한국에서 밴드 음악의 인기가 크게 올라 "밴드 붐"이라는 말이 생겼어요.', '록·밴드 페스티벌이 늘고, 공연 현장의 경험 자체가 상품이 되었어요.', '라이브 영상이 SNS에서 퍼지며 새 팬을 공연장으로 이끌어요.'],
+    good: '현장에서 함께 느끼는 특별한 경험을 할 수 있다', worry: '티켓 가격 상승, 암표, 공연장 안전 문제' },
+  { d: 4, q: 'K-Pop·힙합·EDM 산업',
+    flow: [['만들기', '기획사의 연습생 육성, 프로듀서·작곡팀, 비트메이커, DJ'], ['알리기', '뮤직비디오, 숏폼 챌린지, 음악 방송, SNS'], ['즐기기', '스트리밍, 콘서트·월드 투어, 팬덤 플랫폼, 클럽·페스티벌'], ['돈이 되는 곳', '앨범·포토카드, 굿즈, 공연, 팬 플랫폼 멤버십, 광고']],
+    trend: ['15초 숏폼 챌린지가 신곡을 퍼뜨리는 핵심 홍보 방법이 되었어요.', '전 세계 팬덤이 생기며 해외 공연과 글로벌 차트가 중요해졌어요.', '앨범을 "듣기"보다 포토카드 등을 "모으기" 위해 사는 경우도 늘었어요.'],
+    good: '한국 음악이 전 세계로 퍼지고 팬들이 직접 참여한다', worry: '과소비, 앨범 쓰레기 같은 환경 문제, 연습생의 처우' }
+];
+const industryPage = x => { const d = DIMS[x.d]; return `<div class="page">
+  <div class="top"><div style="display:flex;gap:2.4mm;align-items:center"><span class="paper-tag" style="font-size:18pt">${d[0]}</span><div><div class="kicker">⑤ 내 취향과 음악 산업 · ${d[1]} (${d[2]})</div><div class="title display" data-edit>${x.q}</div></div></div>
+  <div class="who">3학년 <u></u>반 <u></u>번<br>이름 <u class="l"></u></div></div>
+  <div><b>🏭 이 취향의 음악이 나에게 오기까지</b></div>
+  <div class="flow">${x.flow.map(([t, s]) => `<div><b>${t}</b><span data-edit>${s}</span></div>`).join('')}</div>
+  <div class="study"><b>📌 요즘 흐름</b><ul class="trend">${x.trend.map(t => `<li data-edit>${t}</li>`).join('')}</ul>
+    <div class="tiny">최신 통계는 한국콘텐츠진흥원(KOCCA) 「음악산업백서」에서 찾아볼 수 있어요.</div></div>
+  <div class="two">
+    <div class="q"><b>👍 좋은 점 (예시)</b><span data-edit>${x.good}</span><div class="lines">${'<i></i>'.repeat(2)}</div></div>
+    <div class="q"><b>🤔 고민할 점 (예시)</b><span data-edit>${x.worry}</span><div class="lines">${'<i></i>'.repeat(2)}</div></div>
+  </div>
+  <div class="frame"><b>✍️ 문장 틀</b> 나는 주로 ______에서 음악을 만난다. 내 취향의 음악 산업은 ______ 특징이 있다. 이것의 좋은 점은 ______이고, 고민할 점은 ______이다. 내 생각에 앞으로 ______.</div>
+  <div class="box grow"><h3><span>✍️ 내 취향과 음악 산업</span><small>문장 틀을 활용해 3문장 이상</small></h3><div class="lines">${'<i></i>'.repeat(8)}</div></div>
+</div>`; };
+
+/* ===== 조립 ===== */
+function build() {
+  const sets = [...document.querySelectorAll('.panel input[type=checkbox][value]')].filter(c => c.checked).map(c => c.value);
+  const fmt = document.querySelector('input[name=fmt]:checked').value;
+  const pages = [];
+  if (sets.includes('base')) pages.push(baseFront(), baseBack());
+  if (sets.includes('papers')) PAPERS.forEach(p => pages.push(paperPage(p)));
+  if (sets.includes('industry')) INDUSTRY.forEach(x => pages.push(industryPage(x)));
+  // A4 2장씩: 같은 쪽을 좌우에 두 번 → 양면으로 찍고 반으로 자르면 A5 두 장
+  document.getElementById('sheets').innerHTML = fmt === 'a4' ? pages.map(p => `<div class="sheet2up">${p}${p}</div>`).join('') : pages.join('');
+  document.getElementById('pageSize').textContent = fmt === 'a4' ? '@media print { @page { size: A4 landscape; margin: 0; } }' : '';
+  setEdit();
+}
+function setEdit() {
+  const on = document.getElementById('editT').checked;
+  document.body.classList.toggle('editing', on);
+  document.querySelectorAll('[data-edit]').forEach(el => el.contentEditable = on);
+}
+document.getElementById('panel').addEventListener('change', e => { if (e.target.id === 'editT') setEdit(); else build(); });
+// 주소 뒤에 ?set=papers&fmt=a4 처럼 붙이면 바로 그 구성으로 열림 (PDF 생성용)
+(function () {
+  const q = new URLSearchParams(location.search);
+  if (q.get('set')) document.querySelectorAll('.panel input[type=checkbox][value]').forEach(c => c.checked = q.get('set').split(',').includes(c.value));
+  if (q.get('fmt')) document.querySelector(`input[name=fmt][value=${q.get('fmt')}]`).checked = true;
+  build();
+})();
+</script>
+</body>
+</html>

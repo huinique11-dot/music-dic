@@ -6,9 +6,8 @@
 <title>나의 음악 취향 연구소</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<!-- QR 코드 생성 / 카드 이미지 저장용 라이브러리 -->
+<!-- QR 코드 생성용 라이브러리 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ===== 테마 토큰 ===== */
 :root, [data-theme="neo"] {
@@ -301,16 +300,9 @@ body.mobile .genre-row { grid-template-columns: 1fr; }
 
 <script>
 /* =========================================================
-   0. 선생님 설정 — 반별 패들렛 주소
-   (새 보드를 만들면 해당 반 번호 자리에 주소를 붙여넣으세요)
+   0. 설정
    ========================================================= */
 const CLASS_COUNT = 9;
-const PADLETS = {
-  1: 'https://padlet.com/huinique1/3-1-s024g3rhzxvfg4uqbpmz',
-  2: 'https://padlet.com/huinique1/3-2-s024g3tfyzmfb8t8dih7',
-  3: 'https://padlet.com/huinique1/3-3-s024g3t1adcsg29lwrxc',
-  4: '', 5: '', 6: '', 7: '', 8: '', 9: ''
-};
 
 /* =========================================================
    1. 연구 기반 데이터
@@ -563,12 +555,12 @@ function statements() {
       short: '센 음악을 좋아해도 들을 때는 긍정적인 감정을 느낀다',
       html: `강렬함 점수가 높게 나왔어요. 거칠고 센 음악을 좋아하면 화가 많은 사람일까요? 연구에 따르면 격한 음악을 즐기는 사람들은 들을 때 분노보다 <b>힘, 기쁨, 평온</b> 같은 감정을 주로 느꼈어요. 내가 고른 감정(${i.emotions.map(esc).join(', ') || '-'})과 비교해 보세요.` });
   const pl = PLACES.filter(p => i.places.includes(p.t));
-  list.push({ id: 'industry', title: '🏭 내 취향과 음악 산업', src: [],
+  list.push({ id: 'industry', title: '🏭 내 취향과 음악 산업', src: [], noCheck: true,
     short: `나는 주로 ${pl.map(p => p.t).join(', ')}에서 음악을 만난다`,
     html: `나는 주로 ${pl.map(p => U(p.t)).join(', ')}에서 음악을 만나요.<br>${pl.map(p => `→ ${p.ind}`).join('<br>')}<div class="muted small" style="margin-top:4px">최신 통계는 한국콘텐츠진흥원(KOCCA) 음악산업백서에서 찾아볼 수 있어요.</div>` });
   return list;
 }
-const checksDone = () => statements().every(s => { const c = S.checks[s.id]; return c && c.v && (c.v === 'yes' || (c.why || '').trim()); });
+const checksDone = () => statements().filter(s => !s.noCheck).every(s => { const c = S.checks[s.id]; return c && c.v && (c.v === 'yes' || (c.why || '').trim()); });
 
 function radarSVG(a, b) {
   const W = 300, cx = 150, cy = 155, R = 105;
@@ -586,54 +578,21 @@ function dimBars(v) {
   return DIMS.map(d => `<div class="dimbar"><span>${d.emoji} ${d.name}</span><span class="t"><i style="width:${v[d.k]}%;background:${d.color}"></i></span><b>${v[d.k]}</b></div>`).join('');
 }
 
-/* ----- 보고서 초안 ----- */
-function draftReport() {
-  const i = S.input, v = finalDims(), r = ranked(v), auto = ranked(computeDims());
-  const liked = GENRES.filter(g => i.genres[g.k] === 1).map(g => g.name);
-  const songs = i.songs.filter(s => s.t.trim()).map(s => `「${s.t.trim()}」${s.a.trim() ? `(${s.a.trim()})` : ''}`);
-  const intro = `나의 음악 취향 지도에서 가장 높은 축은 '${r[0].name}(${r[0].en})'이고, 그다음은 '${r[1].name}'이다. `
-    + `나는 ${liked.length ? liked.join(', ') + ' 장르를 좋아하고' : '[좋아하는 장르]를 좋아하고'}, ${WORD.tempo[i.tempo - 1]} 템포와 ${WORD.energy[i.energy - 1]} 에너지, ${WORD.mood[i.mood - 1]} 분위기의 음악에 끌린다. `
-    + `음악을 들을 때는 특히 ${i.elements.join(', ') || '[귀 기울이는 요소]'}에 귀 기울인다. `
-    + `내가 가장 좋아하는 곡은 ${songs.join(', ') || '[최애곡]'}이다. `
-    + `「${i.chill.song}」${i.chill.at ? `의 ${i.chill.at}` : ''}에서는 소름이 돋는데, 그때 ${i.chill.feel}`
-    + (S.self && auto[0].k !== r[0].k ? ` 처음 앱은 나를 '${auto[0].name}' 취향으로 분석했지만, 내가 생각하는 나는 '${r[0].name}' 쪽이 더 강해서 직접 수정했다.` : '');
-  const vword = { yes: '나와 맞았다', part: '나와 조금 달랐다', no: '나와 맞지 않았다' };
-  const checkLines = statements().filter(s => s.id !== 'industry').map(s => {
-    const c = S.checks[s.id] || {};
-    if (!c.v) return '';
-    const why = c.why && c.why.trim() ? (c.v === 'yes' ? '왜냐하면 ' : '') + c.why.trim().replace(/([^.!?。])$/, '$1.') : (c.v === 'yes' ? '[맞다고 생각하는 이유]' : '[이유]');
-    return `앱 분석 중 "${s.short}"는 ${vword[c.v]}. ${why}`;
-  }).filter(Boolean);
-  const pl = PLACES.filter(p => i.places.includes(p.t));
-  const body = checkLines.join('\n') + '\n\n'
-    + '[연구 문장 틀 버튼을 눌러 논문과 나를 비교해 보세요]\n\n'
-    + `나는 주로 ${pl.map(p => p.t).join(', ')}에서 음악을 만난다. 이것은 다음과 같은 음악 산업의 특징과 연결된다. ${pl.map(p => p.ind).join(' / ')}. [이런 산업의 변화에 대한 내 생각: 좋은 점이나 아쉬운 점]`;
-  const concl = `이번 분석을 통해 나는 [새롭게 알게 된 나의 모습]을 알게 되었다. 앞으로 [새로 들어보고 싶은 장르나 친구에게 추천하고 싶은 곡과 그 이유].`;
-  return { intro, body, concl };
-}
-const blanks = t => (String(t).match(/\[[^\]]*\]/g) || []);
-function usedPapers() {
-  const all = (S.report.intro + S.report.body + S.report.concl);
-  const ids = new Set(['rentfrow']);
-  statements().forEach(s => s.src.forEach(x => ids.add(x)));
-  Object.entries(PAPERS).forEach(([k, p]) => { if (all.includes(p.cite.split(' ')[0])) ids.add(k); });
-  return [...ids].map(k => PAPERS[k]);
-}
-function padletBody() {
-  const r = ranked(finalDims());
-  return `🎯 나의 대표 취향: ${r[0].emoji} ${r[0].name} (${r[0].en}) / 2위: ${r[1].emoji} ${r[1].name}
-
-■ 서론
-${S.report.intro.trim()}
-
-■ 본론
-${S.report.body.trim()}
-
-■ 결론
-${S.report.concl.trim()}
-
-📚 참고한 연구
-${usedPapers().map(p => '· ' + p.cite).join('\n')}`;
+/* ----- 활동지 도우미 (종이 활동지와 칸 번호를 맞춤) ----- */
+const PAPER_SHEETS = [
+  { tag: 'A', key: 'rentfrow', q: '음악 취향에도 지도가 있을까?', from: 'map' },
+  { tag: 'B', key: 'greenberg22', q: '53개 나라 사람들의 취향은 닮았을까?', from: 'map' },
+  { tag: 'C', key: 'greenberg15', q: '나는 어떤 "소리"에 끌릴까?', from: 'sound' },
+  { tag: 'D', key: 'salimpoor', q: '소름 돋는 순간, 뇌에서는 무슨 일이?', from: 'chill' },
+  { tag: 'E', key: 'bonneville', q: '음악 취향은 나이가 들면 바뀔까?', from: 'age' },
+  { tag: 'F', key: 'thompson', q: '센 음악을 좋아하면 화가 많은 사람일까?', from: 'intense' },
+  { tag: 'G', key: 'boer', q: '같은 노래를 좋아하면 친해질까?', from: null }
+];
+const INDUSTRY_SHEETS = { M: '플레이리스트와 OST의 시대', U: '인디·포크·트로트의 무대', S: '클래식·재즈·국악이 관객을 만나는 길', I: '밴드 붐과 라이브의 힘', C: 'K-Pop·힙합·EDM 산업' };
+// 앱 분석이 나와 '달랐던' 부분과 연결된 논문을 추천 (이야깃거리가 많음). 없으면 D(소름의 과학)
+function recommendPapers() {
+  const rec = PAPER_SHEETS.filter(p => p.from && S.checks[p.from] && S.checks[p.from].v && S.checks[p.from].v !== 'yes');
+  return rec.length ? rec : PAPER_SHEETS.filter(p => p.tag === 'D');
 }
 
 /* =========================================================
@@ -651,22 +610,19 @@ function festItems() {
 }
 const constructive = fb => fb.good.trim().length >= 10 && fb.suggest.trim().length >= 15;
 function evalAreas() {
-  const r = S.report, f = S.fest;
-  const introOK = inputDone() && checksDone() && r.intro.trim().length >= 100 && !blanks(r.intro).length;
-  const indHits = INDUSTRY_KEYS.filter(k => r.body.includes(k)).length;
-  const bodyOK = r.body.trim().length >= 100 && indHits >= 2 && !blanks(r.body).length;
+  const f = S.fest;
   const items = festItems(), okItems = items.filter(i => i[1]).length;
   const validTracks = f.setlist.filter(s => ytId(s.url)).length;
   const goodFb = S.feedback.filter(constructive);
   const a1 = [
-    { label: 'AI 분석 결과를 바탕으로 자신의 음악 취향(장르, BPM, 음색, 가사 등)을 구체적으로 서술함', auto: introOK,
-      why: `과제 입력 ${inputDone() ? '✓' : '✗'} · 결과 확인 ${checksDone() ? '✓' : '✗'} · 서론 ${r.intro.trim().length}자(100자↑) · 빈칸 ${blanks(r.intro).length}개` },
-    { label: '자신의 음악 취향과 관련된 음악의 산업적 특징(유통 플랫폼, 팬덤 문화, 공연 시장 등)을 파악하여 서술함', auto: bodyOK,
-      why: `본론 ${r.body.trim().length}자(100자↑) · 산업 키워드 ${indHits}개(2개↑) · 빈칸 ${blanks(r.body).length}개` },
+    { label: 'AI 분석 결과를 바탕으로 자신의 음악 취향(장르, BPM, 음색, 가사 등)을 구체적으로 서술함', auto: false, teacher: true,
+      why: `활동지 ①②③⑥ 확인 · 앱: 과제 입력 ${inputDone() ? '✓' : '✗'} · 결과 검증 ${checksDone() ? '✓' : '✗'}` },
+    { label: '자신의 음악 취향과 관련된 음악의 산업적 특징(유통 플랫폼, 팬덤 문화, 공연 시장 등)을 파악하여 서술함', auto: false, teacher: true,
+      why: '활동지 ⑤ 내 취향과 음악 산업 확인' },
     { label: '동료와의 음악 교류 활동에 성실히 참여함', auto: false, teacher: true,
-      why: `패들렛 게시 여부는 교사가 패들렛에서 확인 (앱에서 보고서 복사 ${S.flags.copied ? '✓' : '✗'})` },
-    { label: '타인의 음악 취향과 다양한 음악 작품을 탐색하고 패들렛에 기록함', auto: false, teacher: true,
-      why: '패들렛의 [NEW DISCOVERY] 댓글을 교사가 확인' }
+      why: '돌려 읽기 참여 · 내 활동지 ⑦에 친구 댓글이 달렸는지 확인' },
+    { label: '타인의 음악 취향과 다양한 음악 작품을 탐색하고 기록함', auto: false, teacher: true,
+      why: '친구 활동지 ⑦에 쓴 [NEW DISCOVERY] 댓글 확인' }
   ];
   const a2 = [
     { label: '필수 항목(축제명, 슬로건, 일시·장소, 라인업 3팀 이상, 타임테이블, 셋리스트, 관람 안내, 세부 설명)이 포함된 기획안을 완성함', auto: okItems === 8,
@@ -685,7 +641,7 @@ function evalAreas() {
    6. 화면
    ========================================================= */
 const NAV = [
-  ['input', '📥', '과제: 취향 입력'], ['result', '📊', '결과 확인'], ['report', '📝', '보고서·패들렛'],
+  ['input', '📥', '과제: 취향 입력'], ['result', '📊', '결과 확인'], ['report', '📝', '활동지 도우미'],
   ['genres', '📚', '장르 도감'], ['fest', '🎪', '축제 기획'], ['booth', '🎧', '청음 부스'], ['eval', '✅', '평가']
 ];
 function renderNav() {
@@ -719,13 +675,14 @@ VIEWS.home = () => {
       <button class="primary big" style="width:100%;margin-top:14px" data-act="login" ${ready ? '' : 'disabled'}>시작하기 →</button>
       ${here.length ? `<div class="muted small" style="margin-top:12px">이 기기에 저장된 ${loginDraft.cls}반 학생: ${here.map(([id, u]) => `<button class="sm" data-act="pick" data-id="${esc(id)}">${esc(u.student.no)}번 ${esc(u.student.name)}</button>`).join(' ')}</div>` : ''}
       <div class="muted small" style="margin-top:10px">💡 반·번호·이름을 똑같이 입력하면 언제든 내 기록이 이어져요.</div>
+      <div style="margin-top:14px;text-align:right"><a class="small" href="worksheets.html" target="_blank" rel="noopener">🖨️ 선생님용: 활동지 인쇄 ↗</a></div>
     </div>
     <div class="card">
       <h3>🗺️ 이렇게 진행해요</h3>
       <div class="steps" style="grid-template-columns:1fr">
         <div class="card"><span class="tag pink">전날 과제</span> <b>📥 취향 입력</b> — 6문항, 약 8분 (휴대폰 가능)</div>
         <div class="card"><span class="tag blue">1차시</span> <b>📊 결과 확인</b> — 분석이 나와 맞는지 검증하고 고치기</div>
-        <div class="card"><span class="tag blue">1차시</span> <b>📝 보고서 → 패들렛</b> — 미니 연구보고서를 반 패들렛에 올리고 댓글 달기</div>
+        <div class="card"><span class="tag blue">1차시</span> <b>📝 활동지 작성 → 돌려 읽기</b> — 종이 활동지(A5)에 연구보고서를 쓰고, 다른 취향 친구와 돌려 읽으며 댓글 달기</div>
         <div class="card"><span class="tag green">2·3차시</span> <b>🎪 축제 기획 → 🎧 청음 부스</b> — 내 취향 데이터로 축제 만들기</div>
       </div>
     </div>
@@ -799,19 +756,19 @@ VIEWS.result = () => {
   if (!inputDone()) return `<div class="card" style="text-align:center;padding:40px"><h2>📊 아직 결과가 없어요</h2><p class="muted">과제(6문항)를 먼저 모두 입력해 주세요.</p><button class="primary" data-nav="input">📥 과제 하러 가기</button></div>`;
   const auto = computeDims(), mine = S.self, r = ranked(finalDims());
   const st = statements();
-  const nDone = st.filter(s => { const c = S.checks[s.id]; return c && c.v && (c.v === 'yes' || (c.why || '').trim()); }).length;
+  const nDone = st.filter(s => !s.noCheck).filter(s => { const c = S.checks[s.id]; return c && c.v && (c.v === 'yes' || (c.why || '').trim()); }).length;
   return `
   <div class="row between" style="margin-bottom:10px">
     <div><h2>📊 나의 음악 취향 분석 결과</h2><div class="muted">이 결과는 정답이 아니라 연구가 나에 대해 세운 <b>가설</b>이에요. 하나씩 읽고, 맞는지 직접 검증해 보세요!</div></div>
   </div>
   <div class="grid g-side">
     <div>
-      ${st.map(s => { const c = S.checks[s.id] || {}; const ok = c.v && (c.v === 'yes' || (c.why || '').trim()); return `
+      ${st.map(s => { const c = S.checks[s.id] || {}; const ok = s.noCheck || (c.v && (c.v === 'yes' || (c.why || '').trim())); return `
       <div class="stmt ${ok ? 'done' : ''}">
         <h4>${s.title}</h4><p>${s.html}</p>
         ${s.src.length ? `<span class="src">📄 근거: ${s.src.map(k => PAPERS[k].cite).join(', ')}</span>` : ''}
-        <div class="verdict">${[['yes', '✅ 맞아요'], ['part', '🤔 조금 달라요'], ['no', '❌ 아니에요']].map(([v, t]) => `<button class="${c.v === v ? 'on' : ''}" data-check="${s.id}" data-v="${v}">${t}</button>`).join('')}</div>
-        ${c.v ? `<input style="margin-top:8px" data-checkwhy="${s.id}" value="${esc(c.why || '')}" placeholder="${c.v === 'yes' ? '왜 맞다고 생각하나요? (선택, 쓰면 보고서가 풍성해져요)' : '어떤 점이 다른가요? 진짜 나는 어때요? (필수)'}">` : ''}
+        ${s.noCheck ? '<div class="notice small" style="margin-top:8px">🏭 이 내용은 활동지 <b>⑤ 내 취향과 음악 산업</b>에서 더 깊이 생각해 봐요.</div>' : `<div class="verdict">${[['yes', '✅ 맞아요'], ['part', '🤔 조금 달라요'], ['no', '❌ 아니에요']].map(([v, t]) => `<button class="${c.v === v ? 'on' : ''}" data-check="${s.id}" data-v="${v}">${t}</button>`).join('')}</div>`}
+        ${c.v && !s.noCheck ? `<input style="margin-top:8px" data-checkwhy="${s.id}" value="${esc(c.why || '')}" placeholder="${c.v === 'yes' ? '왜 맞다고 생각하나요? (선택, 쓰면 보고서가 풍성해져요)' : '어떤 점이 다른가요? 진짜 나는 어때요? (필수)'}">` : ''}
       </div>`; }).join('')}
     </div>
     <div>
@@ -825,8 +782,8 @@ VIEWS.result = () => {
           ${mine ? '<button class="sm" style="margin-top:8px" data-act="resetSelf">↺ 앱 분석으로 되돌리기</button>' : ''}</div></details>
         <details style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:700">🔍 점수는 어떻게 계산했나요?</summary>
           <div class="small" style="margin-top:6px;line-height:1.7">① 장르마다 연구에서 묶인 취향 축이 있어요 (장르 도감 참고).<br>② 😍좋아요 1점 · 🙂보통 0.5점 · 😐별로 0점, ❓잘 몰라요는 계산에서 빼요.<br>③ 축마다 장르 점수의 평균을 내고(75%), Q2·Q3의 소리 취향을 더해요(25%).<br>그래서 <b>장르를 '잘 몰라요'로 많이 고르면</b> 결과가 덜 정확할 수 있어요.</div></details>
-        <div class="notice small" style="margin-top:12px">검증 ${nDone}/${st.length} 완료 ${checksDone() ? '<span class="ok">✓</span>' : ''}</div>
-        <button class="primary" style="width:100%;margin-top:10px" data-nav="report" ${checksDone() ? '' : 'disabled'}>📝 보고서 쓰러 가기</button>
+        <div class="notice small" style="margin-top:12px">검증 ${nDone}/${st.filter(s => !s.noCheck).length} 완료 ${checksDone() ? '<span class="ok">✓</span>' : ''}</div>
+        <button class="primary" style="width:100%;margin-top:10px" data-nav="report" ${checksDone() ? '' : 'disabled'}>📝 활동지 도우미로</button>
       </div>
     </div>
   </div>`;
@@ -834,60 +791,41 @@ VIEWS.result = () => {
 
 /* ----- 보고서 & 패들렛 ----- */
 VIEWS.report = () => {
-  if (!checksDone()) return `<div class="card" style="text-align:center;padding:40px"><h2>📝 먼저 결과를 확인해 주세요</h2><p class="muted">결과 화면에서 모든 분석 문장을 '맞아요 / 조금 달라요 / 아니에요'로 검증하면 보고서 초안이 자동으로 만들어져요.</p><button class="primary" data-nav="result">📊 결과 확인하러 가기</button></div>`;
-  if (!S.report.intro && !S.report.body && !S.report.concl) { Object.assign(S.report, draftReport()); save(); }
-  const r = ranked(finalDims()), padlet = PADLETS[S.student.cls];
-  const b = blanks(S.report.intro + S.report.body + S.report.concl).length;
+  if (!checksDone()) return `<div class="card" style="text-align:center;padding:40px"><h2>📝 먼저 결과를 확인해 주세요</h2><p class="muted">결과 화면에서 분석 문장을 모두 '맞아요 / 조금 달라요 / 아니에요'로 검증하면 활동지 도우미가 열려요.</p><button class="primary" data-nav="result">📊 결과 확인하러 가기</button></div>`;
+  const i = S.input, v = finalDims(), r = ranked(v);
+  const liked = GENRES.filter(g => i.genres[g.k] === 1).map(g => g.name);
+  const songs = i.songs.filter(s => s.t.trim()).map(s => s.t.trim() + (s.a.trim() ? ` - ${s.a.trim()}` : '')).join(', ');
+  const vword = { yes: '✅ 맞아요', part: '🤔 조금 달라요', no: '❌ 아니에요' };
+  const recTags = recommendPapers().map(p => p.tag);
+  const sec = (n, t, body, note = '') => `<div class="card"><h3><span class="qno">${n}</span>${t}</h3>${note ? `<div class="muted small" style="margin:-4px 0 10px">${note}</div>` : ''}${body}</div>`;
   return `
-  <div class="row between" style="margin-bottom:10px">
-    <div><h2>📝 1차시 · 나의 음악 취향 미니 연구보고서</h2><div class="muted">앱이 초안을 만들어 두었어요. <span class="blank-warn">[ 대괄호 ]</span> 부분을 내 말로 바꾸고, 자유롭게 고쳐 쓰세요.</div></div>
-    <button class="sm ghost" data-act="redraft">↺ 초안 다시 만들기</button>
-  </div>
-  <div class="grid g-side">
-    <div class="card">
-      <label class="f">📍 서론 — 나에 대한 가설 + 근거 데이터 <span class="muted">(내 취향: 장르·템포·음색·가사 등)</span></label>
-      ${area('report.intro', '', 6)}<div class="muted small" data-live="intro"></div>
-      <label class="f">📍 본론 — 검증 + 논문과의 대화 + 내 취향과 음악 산업</label>
-      <div class="frames"><span class="small" style="font-weight:700;margin-right:4px">📄 연구 문장 틀:</span>${Object.entries(PAPERS).map(([k, p]) => `<button class="sm ghost" data-paper="${k}">+ ${p.cite}</button>`).join('')}</div>
-      ${area('report.body', '', 10)}<div class="muted small" data-live="body"></div>
-      <label class="f">📍 결론 — 새롭게 알게 된 나</label>
-      ${area('report.concl', '', 3)}<div class="muted small" data-live="concl"></div>
+  <div style="margin-bottom:10px"><h2>📝 활동지 도우미</h2><div class="muted">종이 활동지의 칸 번호와 똑같아요. 이 화면을 보면서 활동지에 옮겨 적으세요. 내가 고친 내용(취향 지도 수정, 검증 이유)이 반영돼 있어요.</div></div>
+  <div class="grid g2">
+    <div>
+      ${sec('①', '나의 취향 지도', `${DIMS.map(d => `<div class="dimbar"><span>${d.emoji} ${d.name}</span><span class="t"><i style="width:${v[d.k]}%;background:${d.color}"></i></span><b>${Math.round(v[d.k] / 10)}칸</b></div>`).join('')}
+        <div class="notice small" style="margin-top:8px">'나의 대표 취향'에 ○ 표시: <b>${r[0].emoji} ${r[0].name}</b></div>`, '10점 = 1칸. 오른쪽 숫자만큼 칸을 색칠해요.')}
+      ${sec('②', '근거 데이터', `<table class="rubric">
+        <tr><td style="width:36%"><b>좋아하는 장르</b></td><td>${esc(liked.join(', ') || '-')}</td></tr>
+        <tr><td><b>템포 · 에너지 · 분위기</b></td><td>${WORD.tempo[i.tempo - 1]} · ${WORD.energy[i.energy - 1]} · ${WORD.mood[i.mood - 1]}</td></tr>
+        <tr><td><b>귀 기울이는 요소</b></td><td>${esc(i.elements.join(', '))}</td></tr>
+        <tr><td><b>최애곡</b></td><td>${esc(songs)}</td></tr>
+        <tr><td><b>소름 순간 (곡 · 구간)</b></td><td>「${esc(i.chill.song)}」 ${esc(i.chill.at)}</td></tr>
+        <tr><td><b>그때의 느낌</b></td><td>${esc(i.chill.feel)}</td></tr></table>`)}
+      ${sec('③', '검증하기', `<table class="rubric">${statements().filter(s => !s.noCheck).map(s => { const c = S.checks[s.id] || {}; return `<tr><td style="width:40%"><b>${s.title}</b></td><td>${vword[c.v] || '-'}<div class="small">${esc(c.why || '')}</div></td></tr>`; }).join('')}</table>`,
+        '앱에 짧게 쓴 이유를 활동지에는 조금 더 자세히 써 보세요. "진짜 나는 어떤지"가 중요해요!')}
     </div>
     <div>
-      <div class="card sticky">
-        <h3>📌 패들렛에 올리기</h3>
-        <div class="notice small" style="margin-bottom:8px" data-live="blanks">${b ? `<span class="warn">아직 채우지 않은 [ 빈칸 ]이 ${b}개 있어요.</span>` : '<span class="ok">✓ 빈칸을 모두 채웠어요!</span>'}</div>
-        <ol class="howto">
-          <li><b>내 카드 이미지 저장</b><br><button class="sm blue" data-act="cardModal">🖼️ 카드 보기 · 저장</button></li>
-          <li><b>패들렛 열기</b><br>${padlet ? `<a class="btn sm primary" href="${esc(padlet)}" target="_blank" rel="noopener">📌 ${S.student.cls}반 패들렛 열기 ↗</a>` : '<span class="warn small">선생님이 알려준 패들렛 주소로 들어가세요.</span>'}</li>
-          <li><b>내 칸 찾기</b>: <b>${r[0].emoji} ${r[0].name} (${r[0].en})</b> 칸의 <b>＋</b>를 눌러요.</li>
-          <li><b>제목</b> 붙여넣기<br><button class="sm" data-act="copySubject">📋 제목 복사</button> <span class="muted small">${esc(subjectLine())}</span></li>
-          <li><b>본문</b> 붙여넣기<br><button class="sm primary" data-act="copyBody">📋 본문 복사</button></li>
-          <li><b>이미지 첨부</b>: 저장한 카드 이미지를 끌어다 놓거나 📎 버튼으로 올리고 <b>게시</b>!</li>
-        </ol>
-        <h3 style="margin-top:16px">💬 댓글 미션</h3>
-        <div class="small" style="line-height:1.7">같은 취향 친구와는 금방 친해질 수 있어요 <span class="src">📄 Boer et al. (2011)</span>. 그래서 오늘은 반대로, <b>나와 다른 칸</b>에 있는 친구 2명의 글에 댓글을 달아요!</div>
-        <button class="sm" style="margin-top:8px" data-act="copyDiscovery">📋 NEW DISCOVERY 댓글 양식 복사</button>
-        <div class="muted small" style="margin-top:6px">[NEW DISCOVERY] OO이의 보고서를 읽고 [장르/아티스트/곡명]을 새롭게 알게 되었어. 나도 들어보니 [이유] 때문에 관심이 가!</div>
-      </div>
+      ${sec('④', '논문과의 대화 — A~G 중 1장 가져가기', PAPER_SHEETS.map(p => `<div class="row" style="padding:7px 0;border-bottom:1px dashed var(--line);flex-wrap:nowrap">
+          <span class="tag ${recTags.includes(p.tag) ? 'pink' : ''}" style="font-size:14px;min-width:30px;text-align:center">${p.tag}</span>
+          <span style="flex:1">${p.q}<br><span class="muted small">${PAPERS[p.key].cite}</span></span>${recTags.includes(p.tag) ? '<b class="small" style="color:var(--accent);white-space:nowrap">⭐ 추천</b>' : ''}</div>`).join(''),
+        '⭐ 추천은 앱 분석이 나와 <b>달랐던</b> 부분과 연결된 논문이에요. 이야깃거리가 많거든요! 다른 논문이 더 궁금하면 그걸 골라도 돼요.')}
+      ${sec('⑤', '내 취향과 음악 산업 — 1장 가져가기', `<div style="font-size:17px"><b>${r[0].emoji} ${r[0].name}</b> 활동지 · ${INDUSTRY_SHEETS[r[0].k]}</div>
+        <div class="muted small" style="margin-top:6px">2위 취향 <b>${r[1].emoji} ${r[1].name}</b>(${INDUSTRY_SHEETS[r[1].k]})이 더 궁금하면 그걸 골라도 돼요.<br>내가 음악을 만나는 곳: ${esc(i.places.join(', '))}</div>`)}
+      ${sec('⑥', '새롭게 알게 된 나', `<div class="small" style="line-height:1.9">이런 걸 써 볼 수 있어요.<br>· 앱의 분석과 진짜 나는 어디가 같고 어디가 달랐나요?<br>· 논문을 읽고 새롭게 알게 된 점은?<br>· 앞으로 들어 보고 싶은 장르나 친구에게 추천하고 싶은 곡은?</div>`)}
+      ${sec('⑦', '친구 댓글 · NEW DISCOVERY', `<div class="small" style="line-height:1.9">기본 활동지 뒤에 ④⑤ 활동지를 묶어 친구와 돌려 읽어요. 같은 취향 친구와는 금방 친해질 수 있어요 <span class="src">📄 Boer et al. (2011)</span>. 그래서 오늘은 <b>나와 다른 취향</b> 친구의 활동지에 댓글을 써요!</div>`)}
     </div>
   </div>`;
 };
-function myCardHTML() {
-  const i = S.input, v = finalDims(), r = ranked(v);
-  const liked = GENRES.filter(g => i.genres[g.k] === 1);
-  return `<div class="mycard" id="mycard">
-    <div class="row between"><b>${esc(studentTag())}</b><span class="tag pink">나의 음악 취향 연구</span></div>
-    <div class="display" style="font-size:26px;margin:8px 0 2px">${r[0].emoji} ${r[0].name} × ${r[1].emoji} ${r[1].name}</div>
-    <div class="muted small">${r[0].en} · ${r[1].en}</div>
-    <div class="radar-wrap" style="margin:6px 0">${radarSVG(v)}</div>
-    <div class="small" style="line-height:1.8">
-      <b>좋아하는 장르</b> ${liked.map(g => g.emoji + ' ' + esc(g.name)).join(' · ') || '-'}<br>
-      <b>끌리는 소리</b> ${WORD.tempo[i.tempo - 1]} 템포 · ${WORD.energy[i.energy - 1]} 에너지 · ${WORD.mood[i.mood - 1]} 분위기<br>
-      <b>최애곡</b> ${i.songs.filter(s => s.t.trim()).map(s => esc(s.t)).join(' · ')}<br>
-      <b>소름 순간</b> 「${esc(i.chill.song)}」 ${esc(i.chill.at)}
-    </div></div>`;
-}
 
 /* ----- 장르 도감 ----- */
 function genreCard(g, extra = '') {
@@ -1047,7 +985,7 @@ VIEWS.eval = () => {
     <td style="width:120px"><select data-manual="${key}" data-i="${k}"><option value="0" ${x.man === 0 ? 'selected' : ''}>${x.teacher ? '미확인' : '자동 판정'}</option><option value="1" ${x.man === 1 ? 'selected' : ''}>교사 인정</option><option value="-1" ${x.man === -1 ? 'selected' : ''}>교사 미인정</option></select></td>
     <td style="width:40px;text-align:center;font-size:20px">${x.final ? '🟢' : '⚪'}</td></tr>`).join('');
   return `
-  <div class="row between" style="margin-bottom:12px"><div><h2>✅ 수행평가 체크리스트 (40점)</h2><div class="muted">자동 판정 후 교사가 요소별로 인정/미인정을 조정해요. 패들렛 활동(영역1의 3·4번)은 교사가 패들렛에서 확인해요.</div></div>
+  <div class="row between" style="margin-bottom:12px"><div><h2>✅ 수행평가 체크리스트 (40점)</h2><div class="muted">영역 1은 종이 활동지를 보고 교사가 인정/미인정을 골라요. 영역 2는 앱 활동으로 자동 판정 후 교사가 조정할 수 있어요.</div></div>
     <button class="blue" data-act="copyEval">📋 평가 결과 복사</button></div>
   <div class="grid g3">
     <div class="card"><div class="muted">영역 1 · 음악 취향 보고서</div><div class="score">${S.absent ? '-' : E.s1}<span class="muted" style="font-size:16px"> / 20</span></div></div>
@@ -1073,21 +1011,11 @@ function render() {
   if (!S && VIEW !== 'home') VIEW = 'home';
   applyChrome(); renderNav();
   $('#view').innerHTML = (VIEWS[VIEW] || VIEWS.home)();
-  if (VIEW === 'report') refreshLive();
   if (VIEW === 'booth') { drawQR(); fbHint(); }
 }
 function go(v) { VIEW = v; if (S) { S.view = v; save(); } render(); $('#view').scrollTop = 0; window.scrollTo(0, 0); }
 function keepScroll(fn) { const v = $('#view'), y = v.scrollTop, wy = window.scrollY; fn(); v.scrollTop = y; window.scrollTo(0, wy); }
 
-function refreshLive() {
-  const r = S.report;
-  ['intro', 'body', 'concl'].forEach(k => {
-    const el = $(`[data-live="${k}"]`); if (!el) return;
-    const b = blanks(r[k]).length;
-    el.innerHTML = `${r[k].trim().length}자${k === 'body' ? ` · 산업 키워드: ${INDUSTRY_KEYS.filter(x => r.body.includes(x)).join(', ') || '없음'}` : ''}${b ? ` · <span class="warn">빈칸 ${b}개</span>` : ' · <span class="ok">✓</span>'}`;
-  });
-  const bl = $('[data-live="blanks"]'); if (bl) { const b = blanks(r.intro + r.body + r.concl).length; bl.innerHTML = b ? `<span class="warn">아직 채우지 않은 [ 빈칸 ]이 ${b}개 있어요.</span>` : '<span class="ok">✓ 빈칸을 모두 채웠어요!</span>'; }
-}
 function fbHint() {
   const h = $('#fbHint'); if (!h) return;
   const soft = /(면 어떨까|면 좋겠|추천|제안|바꾸|추가|줄이|늘리)/.test(fbDraft.suggest);
@@ -1105,7 +1033,6 @@ function refreshDerived(path) {
     $('#inputPanel').innerHTML = inputPanel();
     ['tempo', 'energy', 'mood'].forEach(k => { const o = $(`[data-out="${k}"]`); if (o) o.textContent = WORD[k][S.input[k] - 1]; });
   }
-  if (VIEW === 'report') refreshLive();
   if (VIEW === 'fest') {
     if (/^fest\.(budget|sound|light|promo|etc)$/.test(path)) {
       $('[data-out="sound"]').textContent = won(S.fest.sound); $('[data-out="light"]').textContent = won(S.fest.light);
@@ -1150,7 +1077,7 @@ $('#viewToggle').addEventListener('click', () => { PREF.mobile = !PREF.mobile; s
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-nav],[data-cls],[data-chip],[data-radio],[data-add],[data-del],[data-act],[data-rate],[data-genre],[data-check],[data-paper],[data-star],[data-play]');
+  const t = e.target.closest('[data-nav],[data-cls],[data-chip],[data-radio],[data-add],[data-del],[data-act],[data-rate],[data-genre],[data-check],[data-star],[data-play]');
   if (!t) return;
   const d = t.dataset;
   if (d.nav) return S ? go(d.nav) : go('home');
@@ -1169,13 +1096,6 @@ document.addEventListener('click', e => {
   if (d.add) { S.fest[d.add].push(ROW_TPL[d.add]()); save(); return keepScroll(render); }
   if (d.del) { S.fest[d.del].splice(+d.i, 1); save(); return keepScroll(render); }
   if (d.check) { S.checks[d.check] = Object.assign(S.checks[d.check] || {}, { v: d.v }); save(); keepScroll(render); const w = $(`[data-checkwhy="${d.check}"]`); if (w && d.v !== 'yes') w.focus(); return; }
-  if (d.paper) {
-    const ta = $('textarea[data-path="report.body"]'), frame = PAPERS[d.paper].frame;
-    ta.value = ta.value.replace('[연구 문장 틀 버튼을 눌러 논문과 나를 비교해 보세요]', '').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n\n' + frame;
-    ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
-    const s = ta.value.lastIndexOf('['); ta.setSelectionRange(s, ta.value.indexOf(']', s) + 1);
-    return;
-  }
   if (d.star) { fbDraft[d.star] = +d.n; return keepScroll(render); }
 });
 function playThumb(t) {
@@ -1202,25 +1122,6 @@ const ACTIONS = {
     else copyText(url, '링크를 복사했어요! 카카오톡 나와의 채팅 등에 붙여넣으세요.');
   },
   resetSelf() { S.self = null; save(); keepScroll(render); },
-  redraft() { if (confirm('지금 쓴 보고서를 지우고 초안을 다시 만들까요?')) { Object.assign(S.report, draftReport()); save(); keepScroll(render); } },
-  cardModal() {
-    openModal(`<h3>🖼️ 내 취향 카드</h3>${myCardHTML()}<div class="row" style="margin-top:10px"><button class="blue" data-act="saveCard">⬇️ 이미지로 저장</button></div><div class="muted small" style="margin-top:6px">저장한 이미지는 보통 '다운로드' 폴더에 있어요. 패들렛 게시물에 끌어다 놓으면 첨부돼요.</div>`);
-  },
-  saveCard() {
-    if (typeof html2canvas === 'undefined') return toast('이미지 기능을 불러오지 못했어요. 대신 화면을 캡처해 주세요.');
-    const el = $('#mycard');
-    html2canvas(el, { backgroundColor: getComputedStyle(document.body).backgroundColor || '#fff', scale: 2 }).then(cv => {
-      const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = `음악취향카드_${S.student.cls}-${S.student.no}_${S.student.name}.png`; a.click();
-      S.flags.card = true; save(); toast('이미지를 저장했어요! (다운로드 폴더)');
-    });
-  },
-  copySubject() { copyText(subjectLine(), '제목을 복사했어요! 패들렛 제목 칸에 붙여넣기(Ctrl+V)'); },
-  copyBody() {
-    const b = blanks(S.report.intro + S.report.body + S.report.concl).length;
-    if (b && !confirm(`아직 [ 빈칸 ]이 ${b}개 남아 있어요. 그래도 복사할까요?`)) return;
-    copyText(padletBody(), '본문을 복사했어요! 패들렛 본문 칸에 붙여넣기(Ctrl+V)'); S.flags.copied = true; save();
-  },
-  copyDiscovery() { copyText('[NEW DISCOVERY] OO이의 보고서를 읽고 [장르/아티스트/곡명]을 새롭게 알게 되었어. 나도 들어보니 [이유] 때문에 관심이 가!', '댓글 양식을 복사했어요! [ ] 부분은 꼭 내 말로 바꿔요.'); },
   songsToSetlist() {
     const songs = S.input.songs.filter(s => s.t.trim());
     S.fest.setlist = S.fest.setlist.filter(x => x.song.trim() || x.url.trim());
