@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나의 음악 취향 연구소</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<!-- QR 코드 생성 / 카드 이미지 저장용 라이브러리 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ===== 테마 토큰 ===== */
+:root, [data-theme="neo"] {
+  --bg: #fff1c9; --bg2: #fff1c9; --panel: #ffffff; --panel2: #fffaf0; --ink: #111111; --muted: #555;
+  --accent: #ff4fa3; --accent2: #3d5afe; --accent3: #00c389; --warn: #e8481a;
+  --line: #111; --bw: 3px; --shadow: 5px 5px 0 #111; --radius: 10px; --blur: none;
+  --chip: #ffffff; --chip-on: #111; --chip-on-ink: #fff; --mark: #fff36b;
+}
+[data-theme="y2k"] {
+  --bg: #e9d8ff; --bg2: linear-gradient(135deg,#ffd6f5 0%,#d6e4ff 45%,#c9fff2 100%);
+  --panel: rgba(255,255,255,.6); --panel2: rgba(255,255,255,.4); --ink: #2a1a4a; --muted: #6a5a8a;
+  --accent: #b44dff; --accent2: #4d7cff; --accent3: #00b3a4; --warn: #e8336f;
+  --line: rgba(255,255,255,.95); --bw: 1.5px; --shadow: 0 8px 30px rgba(120,60,200,.18); --radius: 22px; --blur: blur(14px);
+  --chip: rgba(255,255,255,.65); --chip-on: linear-gradient(135deg,#b44dff,#4d7cff); --chip-on-ink: #fff; --mark: #ffe0fb;
+}
+[data-theme="dark"] {
+  --bg: #0e0f1d; --bg2: #0e0f1d; --panel: #1a1c31; --panel2: #23264a; --ink: #f1f1f8; --muted: #a2a5c4;
+  --accent: #ff5fb0; --accent2: #7d8cff; --accent3: #2ee6a6; --warn: #ff8a4c;
+  --line: #3b3f6b; --bw: 2px; --shadow: 4px 4px 0 #000; --radius: 12px; --blur: none;
+  --chip: #23264a; --chip-on: #ff5fb0; --chip-on-ink: #111; --mark: #5b3a73;
+}
+[data-theme="light"] {
+  --bg: #f4f5fa; --bg2: #f4f5fa; --panel: #ffffff; --panel2: #f8f9fd; --ink: #1b1d29; --muted: #6b6f85;
+  --accent: #e8338a; --accent2: #3d5afe; --accent3: #00a676; --warn: #d9480f;
+  --line: #e1e3ee; --bw: 1px; --shadow: 0 4px 16px rgba(20,20,60,.07); --radius: 14px; --blur: none;
+  --chip: #ffffff; --chip-on: #1b1d29; --chip-on-ink: #fff; --mark: #ffef9e;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg); background-image: var(--bg2); background-attachment: fixed;
+  color: var(--ink); min-height: 100vh; padding: 16px;
+}
+h1, h2, h3, .display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; letter-spacing: .3px; }
+h2 { font-size: 26px; margin: 0 0 6px; }
+h3 { font-size: 19px; margin: 0 0 10px; }
+p { line-height: 1.7; }
+a { color: var(--accent2); }
+mark.user { background: var(--mark); color: inherit; padding: 0 3px; border-radius: 4px; font-weight: 700; }
+
+/* ===== 화면 프레임 (16:9 / 9:16) ===== */
+.stage {
+  margin: 0 auto; width: 100%; max-width: 1400px; aspect-ratio: 16 / 9; min-height: 640px;
+  display: flex; flex-direction: column; overflow: hidden;
+  border: var(--bw) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  background: var(--panel2); backdrop-filter: var(--blur);
+}
+body.mobile .stage { max-width: 430px; aspect-ratio: 9 / 16; min-height: 0; }
+@media (max-width: 820px) {
+  body { padding: 0; }
+  .stage, body.mobile .stage { aspect-ratio: auto; min-height: 100vh; border-radius: 0; border: 0; max-width: none; overflow: visible; }
+  .view { overflow: visible !important; }
+}
+.topbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px;
+  border-bottom: var(--bw) solid var(--line); background: var(--panel); backdrop-filter: var(--blur);
+}
+.brand { font-family: 'Black Han Sans'; font-size: 20px; white-space: nowrap; cursor: pointer; }
+.brand span { color: var(--accent); }
+.nav { display: flex; gap: 6px; flex: 1; overflow-x: auto; padding: 2px; }
+.nav button { font-size: 13px; padding: 6px 10px; white-space: nowrap; flex: none; }
+.nav button.on { background: var(--chip-on); color: var(--chip-on-ink); }
+.tools { display: flex; gap: 6px; align-items: center; }
+.who { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.view { flex: 1; overflow: auto; padding: 20px; }
+body.mobile .brand, body.narrow .brand { flex-basis: 100%; }
+body.mobile .nav, body.narrow .nav { order: 3; flex-basis: 100%; }
+body.mobile .view { padding: 14px; }
+@media (max-width: 820px) { .brand { flex-basis: 100%; } .nav { order: 3; flex-basis: 100%; } .view { padding: 14px; } }
+
+/* ===== 공통 컴포넌트 ===== */
+button, .btn {
+  font: inherit; font-weight: 700; cursor: pointer; color: var(--ink); text-decoration: none; display: inline-block;
+  background: var(--panel); border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .7);
+  padding: 8px 14px; transition: transform .08s, box-shadow .08s;
+}
+button:hover, .btn:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 var(--line); }
+[data-theme="y2k"] button:hover { box-shadow: 0 4px 14px rgba(120,60,200,.25); }
+button.primary, .btn.primary { background: var(--accent); color: #fff; }
+button.blue, .btn.blue { background: var(--accent2); color: #fff; }
+button.green, .btn.green { background: var(--accent3); color: #111; }
+button.ghost { background: transparent; }
+button.sm, .btn.sm { padding: 4px 10px; font-size: 12px; }
+button.big, .btn.big { padding: 14px 20px; font-size: 17px; }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.card {
+  background: var(--panel); border: var(--bw) solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 18px; backdrop-filter: var(--blur);
+}
+.card + .card { margin-top: 16px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g-side { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
+body.mobile .g2, body.mobile .g3, body.mobile .g-side { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .g2, .g3, .g-side { grid-template-columns: 1fr; } }
+.sticky { position: sticky; top: 0; }
+@media (max-width: 900px) { .sticky { position: static; } }
+body.mobile .sticky { position: static; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.muted { color: var(--muted); font-size: 13px; }
+.small { font-size: 12px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--panel2); }
+.tag.pink { background: var(--accent); color: #fff; border-color: transparent; }
+.tag.blue { background: var(--accent2); color: #fff; border-color: transparent; }
+.tag.green { background: var(--accent3); color: #111; border-color: transparent; }
+.src { display: inline-block; font-size: 11px; color: var(--accent2); font-weight: 700; margin-top: 4px; }
+
+input[type=text], input[type=number], input[type=url], input:not([type]), textarea, select {
+  font: inherit; color: var(--ink); width: 100%; padding: 10px 12px;
+  background: var(--panel2); border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .6);
+}
+textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
+input:focus, textarea:focus, select:focus { outline: 3px solid var(--accent); outline-offset: 1px; }
+label.f { display: block; font-weight: 700; font-size: 14px; margin: 14px 0 6px; }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 99px; background: var(--chip); border: var(--bw) solid var(--line); }
+.chip.on { background: var(--chip-on); color: var(--chip-on-ink); font-weight: 700; }
+.chip.on::before { content: '✓ '; }
+
+table.rows { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.rows th { text-align: left; font-size: 12px; color: var(--muted); padding: 4px; }
+table.rows td { padding: 4px; vertical-align: top; }
+table.rows input, table.rows select { padding: 6px 8px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 99; max-width: 90vw; text-align: center;
+  background: var(--ink); color: var(--panel); padding: 12px 20px; border-radius: 99px; font-weight: 700;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.toast.show { opacity: 1; }
+.notice { border: 2px dashed var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--panel2); font-size: 14px; line-height: 1.7; }
+.warn { color: var(--warn); font-weight: 700; }
+.ok { color: var(--accent3); font-weight: 700; }
+[data-theme="neo"] .ok, [data-theme="light"] .ok { color: #008a5e; }
+
+/* ===== 모달 ===== */
+#modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 60; display: none; padding: 20px; overflow: auto; }
+#modal.show { display: grid; place-items: center; }
+#modal .card { max-width: 560px; width: 100%; }
+
+/* ===== 시작 화면 ===== */
+.hero { padding: 26px; background: var(--accent); color: #fff; }
+[data-theme="y2k"] .hero { background: linear-gradient(120deg,#b44dff,#4d7cff 60%,#00d4c0); }
+.hero h1 { font-size: 38px; margin: 0 0 6px; line-height: 1.15; }
+.class-pick { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+@media (max-width: 600px) { .class-pick { grid-template-columns: repeat(5, 1fr); } }
+body.mobile .class-pick { grid-template-columns: repeat(5, 1fr); }
+.class-pick button { padding: 12px 0; font-size: 16px; }
+.class-pick button.on { background: var(--chip-on); color: var(--chip-on-ink); }
+.steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+@media (max-width: 900px) { .steps { grid-template-columns: 1fr; } }
+body.mobile .steps { grid-template-columns: 1fr; }
+.steps .card { margin: 0; padding: 14px; }
+
+/* ===== 입력 ===== */
+.qno { font-family: 'Black Han Sans'; color: var(--accent); font-size: 22px; margin-right: 6px; }
+.progress { height: 12px; border: var(--bw) solid var(--line); border-radius: 99px; overflow: hidden; background: var(--panel2); }
+.progress i { display: block; height: 100%; background: var(--accent3); transition: width .3s; }
+.genre-row { display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+@media (max-width: 600px) { .genre-row { grid-template-columns: 1fr; } }
+body.mobile .genre-row { grid-template-columns: 1fr; }
+.genre-name { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.genre-name button { padding: 0 7px; font-size: 12px; border-radius: 99px; }
+.rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.rate button { padding: 8px 2px; font-size: 13px; font-weight: 500; }
+.rate button.on { background: var(--chip-on); color: var(--chip-on-ink); font-weight: 700; }
+.rate button.on.unknown { background: var(--accent2); color: #fff; }
+.slider-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: -2px; }
+.song-row { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 6px; align-items: center; margin-bottom: 6px; }
+
+/* ===== 결과 ===== */
+.radar-wrap { display: grid; place-items: center; }
+.radar-wrap svg { width: 100%; max-width: 340px; height: auto; }
+.dimbar { display: grid; grid-template-columns: 120px 1fr 40px; gap: 8px; align-items: center; font-size: 13px; margin: 6px 0; }
+.dimbar .t { height: 12px; border-radius: 99px; background: #e6e6e6; overflow: hidden; }
+[data-theme="dark"] .dimbar .t { background: #2c2f55; }
+.dimbar .t i { display: block; height: 100%; border-radius: 99px; }
+.stmt { border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .8); padding: 14px; background: var(--panel2); margin-bottom: 12px; }
+.stmt h4 { margin: 0 0 6px; font-size: 15px; }
+.stmt p { margin: 0 0 6px; font-size: 14px; }
+.verdict { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.verdict button { padding: 8px 2px; font-size: 13px; }
+.verdict button.on { background: var(--chip-on); color: var(--chip-on-ink); }
+.stmt.done { border-color: var(--accent3); }
+
+/* ===== 보고서 ===== */
+.frames { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.frames button { font-size: 11px; font-weight: 500; padding: 3px 8px; }
+.howto { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.howto li { position: relative; padding: 10px 0 10px 44px; border-bottom: 1px dashed var(--line); font-size: 14px; line-height: 1.6; }
+.howto li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: 8px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-family: 'Black Han Sans'; }
+.mycard { background: var(--panel); border: var(--bw) solid var(--line); border-radius: var(--radius); padding: 18px; max-width: 520px; }
+.blank-warn { background: var(--mark); padding: 1px 4px; border-radius: 4px; }
+
+/* ===== 장르 도감 ===== */
+.gcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.gcard h3 { display: flex; align-items: center; gap: 8px; }
+.gcard dl { margin: 6px 0 0; font-size: 13px; line-height: 1.65; }
+.gcard dt { font-weight: 900; color: var(--accent); margin-top: 6px; }
+.gcard dd { margin: 0; }
+
+/* ===== 축제 / 예산 ===== */
+.type-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.type-pick button { text-align: left; padding: 14px; }
+.type-pick button.on { background: var(--chip-on); color: var(--chip-on-ink); }
+.bar { display: flex; height: 26px; border: var(--bw) solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); }
+.bar i { display: block; height: 100%; }
+.legend { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; font-size: 12px; margin-top: 8px; align-items: center; }
+.legend s { display: inline-block; width: 11px; height: 11px; border-radius: 3px; text-decoration: none; }
+.checklist { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.checklist li { padding: 4px 0; }
+.glossary { font-size: 12px; line-height: 1.7; }
+.glossary b { color: var(--accent); }
+
+/* ===== 청음 부스 ===== */
+.tracks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.track { border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .8); overflow: hidden; background: var(--panel); }
+.track .thumb { aspect-ratio: 16/9; background: #222 center/cover no-repeat; display: grid; place-items: center; color: #fff; font-size: 30px; cursor: pointer; position: relative; }
+.track .thumb.play::after { content: '▶'; position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,0,0,.88); display: grid; place-items: center; font-size: 18px; }
+.track iframe { width: 100%; aspect-ratio: 16/9; border: 0; display: block; }
+.track .meta { padding: 8px 10px; font-size: 13px; }
+.qrbox { display: grid; place-items: center; padding: 14px; background: #fff; border-radius: 10px; border: var(--bw) solid var(--line); }
+.qrbox img, .qrbox canvas { max-width: 100%; }
+.stars button { padding: 0 3px; border: 0; background: transparent; font-size: 22px; color: #c9c9c9; }
+.stars button.on { color: #ffb400; }
+.stars button:hover { transform: scale(1.15); box-shadow: none; }
+.cmt { font-size: 12px; padding: 8px 10px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); margin-top: 6px; line-height: 1.55; }
+.cmt.good { border: 2px solid var(--accent3); }
+
+/* ===== 평가 ===== */
+.rubric td, .rubric th { border-bottom: 1px dashed var(--line); padding: 8px 6px; font-size: 13px; vertical-align: top; }
+.rubric { width: 100%; border-collapse: collapse; }
+.score { font-family: 'Black Han Sans'; font-size: 44px; line-height: 1; }
+
+/* ===== A5 포스터 ===== */
+#posterWrap { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; display: none; overflow: auto; padding: 24px; }
+#posterWrap.show { display: block; }
+.poster { width: 148mm; height: 210mm; margin: 0 auto; background: #111; color: #fff; position: relative; overflow: hidden; padding: 12mm 10mm; display: flex; flex-direction: column; gap: 4mm; }
+.poster .pt { font-family: 'Black Han Sans'; font-size: 40px; line-height: 1.05; color: #fff36b; word-break: keep-all; }
+.poster .ps { font-size: 15px; font-weight: 700; }
+.poster .pd { font-size: 12px; opacity: .85; }
+.poster .head { font-family: 'Black Han Sans'; font-size: 30px; line-height: 1.1; }
+.poster .sub { font-family: 'Black Han Sans'; font-size: 20px; color: #ff9bd2; }
+.poster .rest { font-size: 13px; opacity: .9; }
+.poster .foot { margin-top: auto; display: flex; gap: 10px; align-items: flex-end; justify-content: space-between; }
+.poster .pqr { background: #fff; padding: 6px; width: 34mm; height: 34mm; }
+.poster .pqr img, .poster .pqr canvas { width: 100%; height: 100%; }
+.poster .tt { font-size: 10.5px; line-height: 1.6; opacity: .9; }
+.poster .blob { position: absolute; border-radius: 50%; opacity: .5; z-index: 0; }
+.poster > *:not(.blob) { position: relative; z-index: 1; }
+@media print {
+  @page { size: A5 portrait; margin: 0; }
+  body.printing { padding: 0; background: #fff; }
+  body.printing .stage, body.printing .no-print, body.printing .toast, body.printing #modal { display: none !important; }
+  body.printing #posterWrap { position: static; display: block; background: none; padding: 0; }
+  body.printing .poster { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+.solo { max-width: 760px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <header class="topbar">
+    <div class="brand" data-nav="home">🎧 나의 음악 취향 <span>연구소</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="tools">
+      <span class="who" id="who"></span>
+      <select id="themeSel" title="테마 변경" style="width:auto;padding:6px 8px;font-size:13px">
+        <option value="neo">🟨 네오브루탈</option>
+        <option value="y2k">🫧 Y2K 글래스</option>
+        <option value="dark">🌙 다크</option>
+        <option value="light">☀️ 라이트</option>
+      </select>
+      <button class="sm" id="viewToggle" title="화면 비율 전환">📱 9:16</button>
+    </div>
+  </header>
+  <main class="view" id="view"></main>
+</div>
+
+<div id="modal"></div>
+<div id="posterWrap"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   0. 선생님 설정 — 반별 패들렛 주소
+   (새 보드를 만들면 해당 반 번호 자리에 주소를 붙여넣으세요)
+   ========================================================= */
+const CLASS_COUNT = 9;
+const PADLETS = {
+  1: 'https://padlet.com/huinique1/3-1-s024g3rhzxvfg4uqbpmz',
+  2: 'https://padlet.com/huinique1/3-2-s024g3tfyzmfb8t8dih7',
+  3: 'https://padlet.com/huinique1/3-3-s024g3t1adcsg29lwrxc',
+  4: '', 5: '', 6: '', 7: '', 8: '', 9: ''
+};
+
+/* =========================================================
+   1. 연구 기반 데이터
+   ========================================================= */
+// MUSIC 5요인 취향 축 (Rentfrow & Gosling 2003의 4차원 연구 → 이후 5요인으로 발전, Greenberg 외 2015·2022에서 사용)
+const DIMS = [
+  { k: 'M', name: '잔잔함', en: 'Mellow', emoji: '🌙', color: '#7d8cff', desc: '부드럽고 느긋하며 감성적인 소리. 낭만적이고 차분한 분위기의 음악이에요.' },
+  { k: 'U', name: '소박함', en: 'Unpretentious', emoji: '🍃', color: '#00b386', desc: '꾸밈없고 편안한 소리. 어쿠스틱 악기, 단순한 화성, 이야기하듯 담백한 노래예요.' },
+  { k: 'S', name: '세련됨', en: 'Sophisticated', emoji: '🎻', color: '#b07a00', desc: '복잡하고 섬세한 소리. 악기 구성이 풍부하고 셈여림·구조의 변화가 큰 음악이에요.' },
+  { k: 'I', name: '강렬함', en: 'Intense', emoji: '🔥', color: '#e8481a', desc: '크고 거칠고 에너지 넘치는 소리. 디스토션 기타와 강한 드럼이 중심이에요.' },
+  { k: 'C', name: '트렌디함', en: 'Contemporary', emoji: '⚡', color: '#e8338a', desc: '리듬감 있고 전자적인 소리. 비트와 베이스 중심의, 지금 유행하는 사운드예요.' }
+];
+const DIM = Object.fromEntries(DIMS.map(d => [d.k, d]));
+
+// 장르 도감 (장르 학습 + 취향 축 가중치)
+const GENRES = [
+  { k: 'ballad', name: '발라드', emoji: '🌙', w: { M: 1 },
+    root: '한국 대중음악에서 느리고 서정적인 노래를 부르는 말이에요. 서사적인 노래를 뜻하는 영어 ballad에서 이름이 왔어요.',
+    sound: '느린 템포(대략 60~80BPM), 피아노·현악기 반주, 후렴으로 갈수록 감정이 커지는 구성, 가사 전달이 중심이에요.',
+    artists: '이문세, 성시경, 폴킴 / 해외: Adele', why: '부드럽고 감성적인 소리 → 잔잔함' },
+  { k: 'rnb', name: 'R&B/소울', emoji: '🫶', w: { M: .7, C: .3 },
+    root: '1940년대 미국 흑인 음악인 리듬 앤 블루스(Rhythm & Blues)에서 출발했어요.',
+    sound: '끈적한 그루브의 리듬, 화려한 보컬 기교(애드리브, 한 음절을 여러 음으로 굴리는 멜리스마), 부드러운 화성.',
+    artists: '크러쉬, 딘(DEAN), 헤이즈 / 해외: Stevie Wonder, SZA', why: '부드러운 감성 + 리듬감 → 잔잔함·트렌디함' },
+  { k: 'indie', name: '인디/어쿠스틱', emoji: '🍃', w: { U: 1 },
+    root: '인디는 대형 기획사 밖에서 독립적으로 만든 음악이에요. 어쿠스틱은 통기타 같은 전기를 쓰지 않는 악기 중심의 음악(포크 포함)이에요.',
+    sound: '통기타·피아노 중심, 단순한 코드 진행, 담백한 목소리, 일상을 이야기하는 가사.',
+    artists: '10CM, 김광석(포크), 볼빨간사춘기 / 해외: Ed Sheeran', why: '꾸밈없는 소리 → 소박함' },
+  { k: 'trot', name: '트로트', emoji: '🕺', w: { U: 1 },
+    root: '일제강점기 무렵 형성된 한국 대중가요 장르로, 오랫동안 세대를 이어 사랑받아 왔어요.',
+    sound: '쿵짝 하는 2박자 리듬, 음을 꺾어 부르는 창법(꺾기), 삶의 애환을 담은 친숙한 가사.',
+    artists: '남진, 장윤정, 임영웅, 송가인', why: '친숙한 선율과 이야기 같은 가사 → 소박함에 가까워요' },
+  { k: 'classical', name: '클래식', emoji: '🎻', w: { S: 1 },
+    root: '바로크·고전·낭만 시대 등을 거쳐 온 유럽의 예술음악 전통이에요.',
+    sound: '오케스트라·피아노 등 어쿠스틱 악기, 소나타·교향곡 같은 긴 형식, 셈여림과 빠르기 변화가 커요.',
+    artists: '바흐, 베토벤, 쇼팽 / 연주자: 조성진, 임윤찬', why: '복잡하고 섬세한 구조 → 세련됨' },
+  { k: 'jazz', name: '재즈', emoji: '🎷', w: { S: .7, M: .3 },
+    root: '20세기 초 미국 뉴올리언스의 아프리카계 미국인 공동체에서 태어났어요.',
+    sound: '튀는 듯한 스윙 리듬, 즉흥연주(improvisation), 긴장감 있는 복잡한 화음.',
+    artists: 'Louis Armstrong, Miles Davis / 한국: 나윤선', why: '즉흥과 복잡한 화성 → 세련됨' },
+  { k: 'gugak', name: '국악/퓨전국악', emoji: '🥁', w: { S: .6, U: .4 },
+    root: '한국 전통음악, 그리고 전통음악에 록·팝·전자음악을 섞은 퓨전국악이에요.',
+    sound: '장단(세마치·굿거리 등), 시김새(음을 떨거나 꺾는 꾸밈), 가야금·해금·장구 같은 전통 악기.',
+    artists: '이날치, 잠비나이, 송소희', why: '독특한 음계·장단의 깊이 → 세련됨·소박함' },
+  { k: 'rock', name: '록/밴드', emoji: '🎸', w: { I: 1 },
+    root: '1950년대 미국의 로큰롤에서 발전했어요. 최근 한국에서도 밴드 음악 붐이 일고 있어요.',
+    sound: '일렉기타·베이스·드럼 밴드 편성, 2·4박을 강하게 치는 백비트, 라이브의 폭발적인 에너지.',
+    artists: '데이식스, 실리카겔, 넬 / 해외: Queen, Oasis', why: '크고 힘찬 밴드 사운드 → 강렬함' },
+  { k: 'metal', name: '메탈/펑크', emoji: '🤘', w: { I: 1 },
+    root: '1970년대 록에서 갈라져 나온 더 강렬한 장르들이에요. 펑크는 짧고 단순하며 반항적인 음악이에요.',
+    sound: '찌그러진 디스토션 기타, 빠르고 강한 드럼, 외치는 듯한 보컬(샤우팅).',
+    artists: 'Metallica, Green Day / 한국: 크라잉넛(펑크)', why: '거칠고 큰 소리 → 강렬함' },
+  { k: 'hiphop', name: '힙합/랩', emoji: '🎤', w: { C: 1 },
+    root: '1970년대 미국 뉴욕 브롱크스의 블록 파티에서 탄생했어요.',
+    sound: '드럼 루프·샘플링으로 만든 비트 위에 라임(운율)과 플로우(리듬감)를 살린 랩, 자기 이야기를 하는 가사.',
+    artists: '에픽하이, 지코, 이영지 / 해외: Kendrick Lamar', why: '비트 중심의 리듬 → 트렌디함' },
+  { k: 'edm', name: 'EDM/일렉트로닉', emoji: '⚡', w: { C: 1 },
+    root: '신시사이저와 컴퓨터로 만드는 전자 댄스 음악이에요. 클럽과 페스티벌에서 크게 발전했어요.',
+    sound: '쿵쿵 이어지는 4박 킥 드럼(대략 120~130BPM), 긴장을 쌓는 빌드업과 터지는 드롭.',
+    artists: 'Avicii, Calvin Harris, Martin Garrix', why: '전자음과 강한 비트 → 트렌디함' },
+  { k: 'kpop', name: 'K-Pop(댄스)', emoji: '💜', w: { C: .8, M: .2 },
+    root: '1990년대 이후 아이돌 그룹을 중심으로 발전한 한국 대중음악이에요. 지금은 전 세계 팬덤이 있어요.',
+    sound: '귀에 꽂히는 후크, 한 곡 안에서 장르가 바뀌는 구성, 퍼포먼스·뮤직비디오와 함께 즐기는 음악.',
+    artists: 'BTS, 세븐틴, 뉴진스, 에스파', why: '리듬감 있는 유행 사운드 → 트렌디함' }
+];
+const RATE = [{ v: 1, t: '😍 좋아요' }, { v: .5, t: '🙂 보통' }, { v: 0, t: '😐 별로' }, { v: -1, t: '❓ 잘 몰라요' }];
+
+const ELEMENTS = ['멜로디', '가사', '비트·리듬', '음색·보컬', '악기 연주'];
+const PLACES = [
+  { t: '스트리밍 앱 추천(알고리즘)', ind: '스트리밍 플랫폼이 내 감상 기록을 분석해 곡을 추천하는, 지금 음원 유통의 중심 방식' },
+  { t: '숏폼(릴스·쇼츠·틱톡)', ind: '15초 하이라이트와 챌린지가 신곡 홍보와 흥행을 좌우하는 숏폼 중심의 음악 발견' },
+  { t: '유튜브(뮤직비디오·직캠·라이브)', ind: '영상 플랫폼이 음악을 유통하고 홍보하는 핵심 창구가 된 흐름' },
+  { t: '공연·축제 현장', ind: '콘서트·페스티벌 같은 라이브 공연 시장의 성장과 경험 중심 소비' },
+  { t: '팬덤 활동(굿즈·팬 플랫폼)', ind: '앨범·굿즈·팬 플랫폼으로 이어지는 팬덤 경제' },
+  { t: '친구·가족 추천', ind: '입소문과 플레이리스트 공유로 음악이 퍼지는 관계 중심의 확산' },
+  { t: '드라마·영화·게임 OST', ind: '음악이 드라마·영화·게임 같은 다른 콘텐츠와 결합해 함께 소비되는 흐름' }
+];
+const EMOTIONS = ['신이 나요', '힘이 나요', '마음이 편안해져요', '위로받아요', '스트레스가 풀려요', '집중이 잘 돼요', '추억이 떠올라요', '설레요'];
+const INDUSTRY_KEYS = ['플랫폼', '스트리밍', '알고리즘', '추천', '팬덤', '공연', '페스티벌', '콘서트', '굿즈', '숏폼', '챌린지', '음반', '시장', '산업', '티켓', '유통', '유튜브', 'OST'];
+
+const PAPERS = {
+  rentfrow: { cite: 'Rentfrow & Gosling (2003)', full: 'Rentfrow, P. J., & Gosling, S. D. (2003). The do re mi\'s of everyday life: The structure and personality correlates of music preferences. Journal of Personality and Social Psychology.',
+    frame: 'Rentfrow와 Gosling(2003)의 연구에서는 사람들의 음악 취향이 몇 가지 큰 묶음으로 나뉜다고 했는데, 나의 경우 [내 취향은 어떤 묶음에 가까운지, 그렇게 생각하는 이유]' },
+  greenberg22: { cite: 'Greenberg et al. (2022)', full: 'Greenberg, D. M., et al. (2022). Universals and variations in musical preferences: A study of preferential reactions to Western music in 53 countries. Journal of Personality and Social Psychology.',
+    frame: 'Greenberg 외(2022)의 연구에서는 53개 나라 사람들의 음악 취향에서 비슷한 구조가 나타났다고 했는데, 나는 [한국 청소년인 나에게도 맞는지에 대한 생각]' },
+  greenberg15: { cite: 'Greenberg et al. (2015)', full: 'Greenberg, D. M., Baron-Cohen, S., Stillwell, D. J., Kosinski, M., & Rentfrow, P. J. (2015). Musical preferences are linked to cognitive styles. PLOS ONE.',
+    frame: 'Greenberg 외(2015)의 연구에서는 사람마다 끌리는 음악의 속성(에너지, 분위기, 감정의 깊이)이 다르다고 했는데, 나는 [내가 끌리는 소리의 속성과 그 이유]' },
+  salimpoor: { cite: 'Salimpoor et al. (2011)', full: 'Salimpoor, V. N., Benovoy, M., Larcher, K., Dagher, A., & Zatorre, R. J. (2011). Anatomically distinct dopamine release during anticipation and experience of peak emotion to music. Nature Neuroscience.',
+    frame: 'Salimpoor 외(2011)의 연구에서는 음악이 절정에 이를 때와 그 직전 기대하는 순간에 뇌에서 도파민이 나온다고 했는데, 나의 경우 [소름 돋는 순간 직전에 어떤 기대감을 느끼는지]' },
+  bonneville: { cite: 'Bonneville-Roussy et al. (2013)', full: 'Bonneville-Roussy, A., Rentfrow, P. J., Xu, M. K., & Potter, J. (2013). Music through the ages: Trends in musical engagement and preferences from adolescence through middle adulthood. Journal of Personality and Social Psychology.',
+    frame: 'Bonneville-Roussy 외(2013)의 연구에서는 청소년기에 음악이 가장 중요하고 나이가 들면 취향이 바뀐다고 했는데, 나는 [10년 뒤 내 취향이 어떻게 바뀔지에 대한 예상]' },
+  thompson: { cite: 'Thompson et al. (2019)', full: 'Thompson, W. F., Geeves, A. M., & Olsen, K. N. (2019). Who enjoys listening to violent music and why? Psychology of Popular Media Culture.',
+    frame: 'Thompson 외(2019)의 연구에서는 격한 음악을 즐기는 사람들이 분노보다 힘·기쁨·평온 같은 감정을 느낀다고 했는데, 나는 [센 음악을 들을 때 내가 느끼는 감정]' },
+  boer: { cite: 'Boer et al. (2011)', full: 'Boer, D., Fischer, R., Strack, M., Bond, M. H., Lo, E., & Lam, J. (2011). How shared preferences in music create bonds between people: Values as the missing link. Personality and Social Psychology Bulletin.',
+    frame: 'Boer 외(2011)의 연구에서는 음악 취향이 같으면 서로 가치관이 비슷하다고 느껴 가까워진다고 했는데, 나는 [음악 취향이 같은 친구와의 경험]' }
+};
+
+/* =========================================================
+   2. 저장소 (한 노트북을 여러 학생이 써도 학생별로 따로 저장)
+   ========================================================= */
+const K_USERS = 'musicLab.users.v2', K_PREF = 'musicLab.pref.v2', K_LAST = 'musicLab.last.v2';
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+let USERS = store.get(K_USERS, {});
+let PREF = Object.assign({ theme: 'neo', mobile: false }, store.get(K_PREF, {}));
+let UID = null, S = null, VIEW = 'home';
+let loginDraft = { cls: 0, no: '', name: '' };
+
+function newUser(cls, no, name) {
+  return {
+    v: 2, student: { cls, no, name },
+    input: { genres: {}, tempo: 3, energy: 3, mood: 3, elements: [], songs: [{ t: '', a: '' }, { t: '', a: '' }, { t: '', a: '' }], chill: { song: '', at: '', feel: '' }, places: [], emotions: [] },
+    checks: {}, self: null,
+    report: { intro: '', body: '', concl: '' }, flags: {},
+    fest: {
+      type: 'school', name: '', slogan: '', date: '', venue: '', purpose: [], purposeText: '',
+      lineup: [{ tier: '헤드라이너', artist: '', fee: 1500000 }, { tier: '서브 헤드라이너', artist: '', fee: 800000 }, { tier: '루키', artist: '', fee: 100000 }],
+      timetable: [{ time: '', stage: '', act: '' }], setlist: [{ artist: '', song: '', url: '' }],
+      booths: [{ kind: '체험 부스', name: '', cost: 300000 }], guide: '', detail: '',
+      budget: 0, sound: 0, light: 0, promo: 0, etc: 0
+    },
+    booth: { qrMode: 'yt', qrMade: false, posterMade: false },
+    feedback: [], manual: { a1: [0, 0, 0, 0], a2: [0, 0, 0, 0] }, absent: false, view: 'input'
+  };
+}
+const uidOf = (cls, no, name) => `${cls}-${String(no).trim()}-${String(name).trim()}`;
+let saveTimer;
+function save() {
+  if (!UID) return;
+  USERS[UID] = S;
+  clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set(K_USERS, USERS), 150);
+}
+function savePref() { store.set(K_PREF, PREF); }
+function login(cls, no, name) {
+  const id = uidOf(cls, no, name);
+  if (!USERS[id]) USERS[id] = newUser(cls, String(no).trim(), String(name).trim());
+  UID = id; S = USERS[id]; store.set(K_LAST, id); store.set(K_USERS, USERS);
+  go(S.view && S.view !== 'home' ? S.view : 'input');
+}
+function logout() { save(); store.set(K_USERS, USERS); UID = null; S = null; store.set(K_LAST, null); loginDraft = { cls: 0, no: '', name: '' }; go('home'); }
+
+/* =========================================================
+   3. 유틸
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => (Math.round(Number(n) || 0)).toLocaleString('ko-KR') + '원';
+const num = v => Math.max(0, Number(String(v).replace(/[^\d.]/g, '')) || 0);
+const U = s => `<mark class="user">${esc(s)}</mark>`;
+const joinKo = arr => arr.join(', ');
+const studentTag = () => S ? `${S.student.cls}반 ${S.student.no}번 ${S.student.name}` : '';
+const subjectLine = () => `3-${S.student.cls}-${S.student.no} ${S.student.name} · 나의 음악 취향 연구 보고서`;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+function getPath(path) { return path.split('.').reduce((o, k) => (o == null ? o : o[k]), S); }
+function setPath(path, val) { const ks = path.split('.'); const last = ks.pop(); ks.reduce((o, k) => o[k], S)[last] = val; }
+function ytId(url) { const m = String(url || '').match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/); return m ? m[1] : null; }
+function copyText(text, msg = '복사했어요! 붙여넣기(Ctrl+V) 하세요.') {
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast(msg); } catch (e) { toast('복사에 실패했어요. 글자를 직접 선택해 복사해 주세요.'); }
+    ta.remove();
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => toast(msg), fallback); else fallback();
+}
+function chips(path, list) {
+  const cur = getPath(path);
+  return `<div class="chips">${list.map(v => `<button type="button" class="chip ${cur.includes(v) ? 'on' : ''}" data-chip="${path}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
+}
+const field = (path, ph = '', type = 'text') => `<input type="${type}" data-path="${path}" value="${esc(getPath(path))}" placeholder="${esc(ph)}">`;
+const area = (path, ph = '', rows = 4) => `<textarea data-path="${path}" rows="${rows}" placeholder="${esc(ph)}">${esc(getPath(path))}</textarea>`;
+function openModal(html) { $('#modal').innerHTML = `<div class="card">${html}<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="primary" data-act="closeModal">닫기</button></div></div>`; $('#modal').classList.add('show'); }
+function closeModal() { $('#modal').classList.remove('show'); }
+// 링크에 데이터 담기 (한글 안전 base64url)
+const enc = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const dec = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
+const appBase = () => location.href.split('#')[0];
+
+/* =========================================================
+   4. 분석 엔진
+   ========================================================= */
+function inputStatus() {
+  const i = S.input;
+  const rated = GENRES.filter(g => i.genres[g.k] !== undefined).length;
+  return [
+    { t: '장르 12개 모두 고르기', ok: rated === GENRES.length, info: `${rated}/12` },
+    { t: '소리 취향 슬라이더', ok: true },
+    { t: '귀 기울이는 요소 1개 이상', ok: i.elements.length >= 1 },
+    { t: '최애곡 1곡 이상', ok: i.songs.some(s => s.t.trim()) },
+    { t: '소름 돋는 순간 (곡·느낌)', ok: !!(i.chill.song.trim() && i.chill.feel.trim()) },
+    { t: '음악을 만나는 곳·감정', ok: i.places.length >= 1 && i.emotions.length >= 1 }
+  ];
+}
+const inputDone = () => inputStatus().every(x => x.ok);
+
+function computeDims() {
+  const i = S.input, sum = {}, wsum = {};
+  DIMS.forEach(d => { sum[d.k] = 0; wsum[d.k] = 0; });
+  GENRES.forEach(g => {
+    const r = i.genres[g.k];
+    if (r === undefined || r < 0) return;              // '잘 몰라요'는 계산에서 제외
+    for (const [k, w] of Object.entries(g.w)) { sum[k] += w * r; wsum[k] += w; }
+  });
+  const c = v => (v - 3) / 2;                           // 1~5 → -1~1
+  const t = c(i.tempo), e = c(i.energy), m = c(i.mood), el = i.elements;
+  const adj = {
+    M: -.5 * e - .3 * t + (el.includes('음색·보컬') ? .15 : 0) + (el.includes('가사') ? .05 : 0) + (el.includes('멜로디') ? .05 : 0),
+    U: -.3 * e + .1 * m + (el.includes('가사') ? .15 : 0) + (el.includes('멜로디') ? .05 : 0),
+    S: (el.includes('악기 연주') ? .25 : 0),
+    I: .5 * e - .3 * m + .2 * t + (el.includes('악기 연주') ? .05 : 0),
+    C: .3 * e + .3 * t + .2 * m + (el.includes('비트·리듬') ? .2 : 0)
+  };
+  const out = {};
+  DIMS.forEach(d => {
+    const g = wsum[d.k] ? sum[d.k] / wsum[d.k] : .3;
+    const s = Math.max(0, Math.min(1, .5 + adj[d.k]));
+    out[d.k] = Math.round((g * .75 + s * .25) * 100);
+  });
+  return out;
+}
+const ranked = v => DIMS.map(d => ({ ...d, v: v[d.k] })).sort((a, b) => b.v - a.v);
+const finalDims = () => S.self || computeDims();       // 학생이 수정한 값 우선
+
+const WORD = {
+  tempo: ['아주 느린', '느린', '중간', '빠른', '아주 빠른'],
+  energy: ['아주 잔잔한', '잔잔한', '적당한', '강렬한', '아주 강렬한'],
+  mood: ['어둡고 쓸쓸한', '조금 어두운', '밝기와 어두움이 섞인', '밝은', '아주 밝고 신나는']
+};
+function statements() {
+  const i = S.input, v = computeDims(), r = ranked(v);
+  const liked = GENRES.filter(g => i.genres[g.k] === 1).map(g => g.name);
+  const songs = i.songs.filter(s => s.t.trim()).map(s => s.t.trim() + (s.a.trim() ? ` - ${s.a.trim()}` : ''));
+  const list = [
+    { id: 'map', title: '🗺️ 나의 취향 지도', src: ['rentfrow', 'greenberg22'],
+      short: `나의 대표 취향은 '${r[0].name}'이다`,
+      html: `나의 대표 취향은 <b>${r[0].emoji} ${r[0].name}(${r[0].en})</b>이고, 그다음은 <b>${r[1].emoji} ${r[1].name}</b>이에요. ${r[0].desc}${liked.length ? `<br>'좋아요'를 고른 장르: ${liked.map(U).join(', ')}` : ''}` },
+    { id: 'sound', title: '🔊 내가 끌리는 소리', src: ['greenberg15'],
+      short: `나는 ${WORD.tempo[i.tempo - 1]} 템포, ${WORD.energy[i.energy - 1]} 에너지의 소리에 끌린다`,
+      html: `나는 <b>${WORD.tempo[i.tempo - 1]} 템포</b>, <b>${WORD.energy[i.energy - 1]} 에너지</b>, <b>${WORD.mood[i.mood - 1]} 분위기</b>의 소리에 끌려요. 음악을 들을 때 특히 ${i.elements.length ? i.elements.map(U).join(', ') : '여러 요소'}에 귀 기울여요.` },
+    { id: 'chill', title: '✨ 소름의 과학', src: ['salimpoor'],
+      short: `「${i.chill.song}」에서 소름이 돋는 건 뇌가 그 순간을 기대하기 때문이다`,
+      html: `${U(i.chill.song)}${i.chill.at.trim() ? `의 ${U(i.chill.at)}` : ''}에서 소름이 돋는다고 했죠. 연구에 따르면 음악이 절정에 이를 때 뇌에서 '기분 좋은 물질'인 도파민이 나오고, 절정 <b>직전</b> "곧 온다!" 하고 기대하는 순간에도 도파민이 나와요. 내가 적은 느낌: “${U(i.chill.feel)}”` },
+    { id: 'age', title: '🌱 지금, 열여섯의 취향', src: ['bonneville'],
+      short: '지금의 내 취향은 앞으로 바뀔 수 있다',
+      html: `나는 음악을 들으며 ${i.emotions.map(U).join(', ') || '여러 감정'}. 연구에 따르면 청소년기는 음악을 가장 많이, 가장 다양한 상황에서 듣는 시기예요. 나이가 들수록 강렬함·트렌디함 취향은 줄고 잔잔함·소박함·세련됨 취향은 늘어나는 경향이 보고됐어요. <b>10년 뒤 내 취향 지도는 어떻게 바뀔까요?</b>` }
+  ];
+  if (v.I >= 55 || r.slice(0, 2).some(x => x.k === 'I')) list.push(
+    { id: 'intense', title: '🔥 강렬한 음악과 나', src: ['thompson'],
+      short: '센 음악을 좋아해도 들을 때는 긍정적인 감정을 느낀다',
+      html: `강렬함 점수가 높게 나왔어요. 거칠고 센 음악을 좋아하면 화가 많은 사람일까요? 연구에 따르면 격한 음악을 즐기는 사람들은 들을 때 분노보다 <b>힘, 기쁨, 평온</b> 같은 감정을 주로 느꼈어요. 내가 고른 감정(${i.emotions.map(esc).join(', ') || '-'})과 비교해 보세요.` });
+  const pl = PLACES.filter(p => i.places.includes(p.t));
+  list.push({ id: 'industry', title: '🏭 내 취향과 음악 산업', src: [],
+    short: `나는 주로 ${pl.map(p => p.t).join(', ')}에서 음악을 만난다`,
+    html: `나는 주로 ${pl.map(p => U(p.t)).join(', ')}에서 음악을 만나요.<br>${pl.map(p => `→ ${p.ind}`).join('<br>')}<div class="muted small" style="margin-top:4px">최신 통계는 한국콘텐츠진흥원(KOCCA) 음악산업백서에서 찾아볼 수 있어요.</div>` });
+  return list;
+}
+const checksDone = () => statements().every(s => { const c = S.checks[s.id]; return c && c.v && (c.v === 'yes' || (c.why || '').trim()); });
+
+function radarSVG(a, b) {
+  const W = 300, cx = 150, cy = 155, R = 105;
+  const pt = (i, r) => { const ang = -Math.PI / 2 + i * 2 * Math.PI / 5; return [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r]; };
+  const poly = vals => DIMS.map((d, i) => pt(i, R * (vals[d.k] / 100)).map(n => n.toFixed(1)).join(',')).join(' ');
+  const grid = [.25, .5, .75, 1].map(f => `<polygon points="${DIMS.map((d, i) => pt(i, R * f).join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-opacity=".18"/>`).join('');
+  const axes = DIMS.map((d, i) => { const [x, y] = pt(i, R); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="currentColor" stroke-opacity=".18"/>`; }).join('');
+  const labels = DIMS.map((d, i) => { const [x, y] = pt(i, R + 26); return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="currentColor">${d.emoji} ${d.name}</text>`; }).join('');
+  return `<svg viewBox="0 0 ${W} 310" role="img" aria-label="취향 지도">${grid}${axes}
+    <polygon points="${poly(a)}" fill="#ff4fa3" fill-opacity=".28" stroke="#ff4fa3" stroke-width="2.5"/>
+    ${b ? `<polygon points="${poly(b)}" fill="#3d5afe" fill-opacity=".15" stroke="#3d5afe" stroke-width="2.5" stroke-dasharray="6 4"/>` : ''}
+    ${labels}</svg>`;
+}
+function dimBars(v) {
+  return DIMS.map(d => `<div class="dimbar"><span>${d.emoji} ${d.name}</span><span class="t"><i style="width:${v[d.k]}%;background:${d.color}"></i></span><b>${v[d.k]}</b></div>`).join('');
+}
+
+/* ----- 보고서 초안 ----- */
+function draftReport() {
+  const i = S.input, v = finalDims(), r = ranked(v), auto = ranked(computeDims());
+  const liked = GENRES.filter(g => i.genres[g.k] === 1).map(g => g.name);
+  const songs = i.songs.filter(s => s.t.trim()).map(s => `「${s.t.trim()}」${s.a.trim() ? `(${s.a.trim()})` : ''}`);
+  const intro = `나의 음악 취향 지도에서 가장 높은 축은 '${r[0].name}(${r[0].en})'이고, 그다음은 '${r[1].name}'이다. `
+    + `나는 ${liked.length ? liked.join(', ') + ' 장르를 좋아하고' : '[좋아하는 장르]를 좋아하고'}, ${WORD.tempo[i.tempo - 1]} 템포와 ${WORD.energy[i.energy - 1]} 에너지, ${WORD.mood[i.mood - 1]} 분위기의 음악에 끌린다. `
+    + `음악을 들을 때는 특히 ${i.elements.join(', ') || '[귀 기울이는 요소]'}에 귀 기울인다. `
+    + `내가 가장 좋아하는 곡은 ${songs.join(', ') || '[최애곡]'}이다. `
+    + `「${i.chill.song}」${i.chill.at ? `의 ${i.chill.at}` : ''}에서는 소름이 돋는데, 그때 ${i.chill.feel}`
+    + (S.self && auto[0].k !== r[0].k ? ` 처음 앱은 나를 '${auto[0].name}' 취향으로 분석했지만, 내가 생각하는 나는 '${r[0].name}' 쪽이 더 강해서 직접 수정했다.` : '');
+  const vword = { yes: '나와 맞았다', part: '나와 조금 달랐다', no: '나와 맞지 않았다' };
+  const checkLines = statements().filter(s => s.id !== 'industry').map(s => {
+    const c = S.checks[s.id] || {};
+    if (!c.v) return '';
+    const why = c.why && c.why.trim() ? (c.v === 'yes' ? '왜냐하면 ' : '') + c.why.trim().replace(/([^.!?。])$/, '$1.') : (c.v === 'yes' ? '[맞다고 생각하는 이유]' : '[이유]');
+    return `앱 분석 중 "${s.short}"는 ${vword[c.v]}. ${why}`;
+  }).filter(Boolean);
+  const pl = PLACES.filter(p => i.places.includes(p.t));
+  const body = checkLines.join('\n') + '\n\n'
+    + '[연구 문장 틀 버튼을 눌러 논문과 나를 비교해 보세요]\n\n'
+    + `나는 주로 ${pl.map(p => p.t).join(', ')}에서 음악을 만난다. 이것은 다음과 같은 음악 산업의 특징과 연결된다. ${pl.map(p => p.ind).join(' / ')}. [이런 산업의 변화에 대한 내 생각: 좋은 점이나 아쉬운 점]`;
+  const concl = `이번 분석을 통해 나는 [새롭게 알게 된 나의 모습]을 알게 되었다. 앞으로 [새로 들어보고 싶은 장르나 친구에게 추천하고 싶은 곡과 그 이유].`;
+  return { intro, body, concl };
+}
+const blanks = t => (String(t).match(/\[[^\]]*\]/g) || []);
+function usedPapers() {
+  const all = (S.report.intro + S.report.body + S.report.concl);
+  const ids = new Set(['rentfrow']);
+  statements().forEach(s => s.src.forEach(x => ids.add(x)));
+  Object.entries(PAPERS).forEach(([k, p]) => { if (all.includes(p.cite.split(' ')[0])) ids.add(k); });
+  return [...ids].map(k => PAPERS[k]);
+}
+function padletBody() {
+  const r = ranked(finalDims());
+  return `🎯 나의 대표 취향: ${r[0].emoji} ${r[0].name} (${r[0].en}) / 2위: ${r[1].emoji} ${r[1].name}
+
+■ 서론
+${S.report.intro.trim()}
+
+■ 본론
+${S.report.body.trim()}
+
+■ 결론
+${S.report.concl.trim()}
+
+📚 참고한 연구
+${usedPapers().map(p => '· ' + p.cite).join('\n')}`;
+}
+
+/* =========================================================
+   5. 평가 (40점 루브릭)
+   ========================================================= */
+const MAP_SCORE = [4, 8, 12, 16, 20];
+function festItems() {
+  const f = S.fest;
+  return [
+    ['축제명', !!f.name.trim()], ['슬로건', !!f.slogan.trim()], ['일시·장소', !!(f.date.trim() && f.venue.trim())],
+    ['라인업 3팀 이상', f.lineup.filter(l => l.artist.trim()).length >= 3],
+    ['타임테이블', f.timetable.some(t => t.time.trim() && t.act.trim())], ['셋리스트', f.setlist.some(s => s.song.trim())],
+    ['관람 안내', f.guide.trim().length >= 10], ['세부 설명', f.detail.trim().length >= 20]
+  ];
+}
+const constructive = fb => fb.good.trim().length >= 10 && fb.suggest.trim().length >= 15;
+function evalAreas() {
+  const r = S.report, f = S.fest;
+  const introOK = inputDone() && checksDone() && r.intro.trim().length >= 100 && !blanks(r.intro).length;
+  const indHits = INDUSTRY_KEYS.filter(k => r.body.includes(k)).length;
+  const bodyOK = r.body.trim().length >= 100 && indHits >= 2 && !blanks(r.body).length;
+  const items = festItems(), okItems = items.filter(i => i[1]).length;
+  const validTracks = f.setlist.filter(s => ytId(s.url)).length;
+  const goodFb = S.feedback.filter(constructive);
+  const a1 = [
+    { label: 'AI 분석 결과를 바탕으로 자신의 음악 취향(장르, BPM, 음색, 가사 등)을 구체적으로 서술함', auto: introOK,
+      why: `과제 입력 ${inputDone() ? '✓' : '✗'} · 결과 확인 ${checksDone() ? '✓' : '✗'} · 서론 ${r.intro.trim().length}자(100자↑) · 빈칸 ${blanks(r.intro).length}개` },
+    { label: '자신의 음악 취향과 관련된 음악의 산업적 특징(유통 플랫폼, 팬덤 문화, 공연 시장 등)을 파악하여 서술함', auto: bodyOK,
+      why: `본론 ${r.body.trim().length}자(100자↑) · 산업 키워드 ${indHits}개(2개↑) · 빈칸 ${blanks(r.body).length}개` },
+    { label: '동료와의 음악 교류 활동에 성실히 참여함', auto: false, teacher: true,
+      why: `패들렛 게시 여부는 교사가 패들렛에서 확인 (앱에서 보고서 복사 ${S.flags.copied ? '✓' : '✗'})` },
+    { label: '타인의 음악 취향과 다양한 음악 작품을 탐색하고 패들렛에 기록함', auto: false, teacher: true,
+      why: '패들렛의 [NEW DISCOVERY] 댓글을 교사가 확인' }
+  ];
+  const a2 = [
+    { label: '필수 항목(축제명, 슬로건, 일시·장소, 라인업 3팀 이상, 타임테이블, 셋리스트, 관람 안내, 세부 설명)이 포함된 기획안을 완성함', auto: okItems === 8,
+      why: `필수 항목 ${okItems}/8 · 미완성: ${items.filter(i => !i[1]).map(i => i[0]).join(', ') || '없음'}` },
+    { label: 'A5 홍보물을 완성하여 제출함', auto: S.booth.posterMade && !!f.name.trim(), why: `A5 포스터 ${S.booth.posterMade ? '생성 ✓' : '미생성'} (Canva·미리캔버스로 만들었다면 교사 '인정')` },
+    { label: '행사 셋리스트 청음 부스를 운영함', auto: validTracks >= 1 && S.booth.qrMade, why: `유튜브 링크 ${validTracks}곡 · 청음 QR ${S.booth.qrMade ? '생성 ✓' : '미생성'}` },
+    { label: '동료의 음악 행사에 대한 구체적이고 건설적인 피드백을 작성함', auto: goodFb.length >= 1, why: `건설적 피드백 ${goodFb.length}개 / 전체 ${S.feedback.length}개` }
+  ];
+  const res = (arr, man) => arr.map((x, i) => ({ ...x, man: man[i], final: man[i] === 1 ? true : man[i] === -1 ? false : x.auto }));
+  const A1 = res(a1, S.manual.a1), A2 = res(a2, S.manual.a2);
+  const s1 = MAP_SCORE[A1.filter(x => x.final).length], s2 = MAP_SCORE[A2.filter(x => x.final).length];
+  return { A1, A2, s1, s2, total: S.absent ? 3 : s1 + s2 };
+}
+
+/* =========================================================
+   6. 화면
+   ========================================================= */
+const NAV = [
+  ['input', '📥', '과제: 취향 입력'], ['result', '📊', '결과 확인'], ['report', '📝', '보고서·패들렛'],
+  ['genres', '📚', '장르 도감'], ['fest', '🎪', '축제 기획'], ['booth', '🎧', '청음 부스'], ['eval', '✅', '평가']
+];
+function renderNav() {
+  $('#nav').innerHTML = S ? NAV.map(([k, i, l]) => `<button class="${VIEW === k ? 'on' : ''}" data-nav="${k}">${i} <span class="lbl">${l}</span></button>`).join('') : '';
+  $('#who').innerHTML = S ? `${esc(studentTag())} <button class="sm ghost" data-act="logout" title="다른 학생으로 바꾸기">↩︎ 나가기</button>` : '';
+}
+const VIEWS = {};
+
+/* ----- 시작(로그인) ----- */
+VIEWS.home = () => {
+  const last = store.get(K_LAST, null);
+  const lastU = last && USERS[last];
+  const here = loginDraft.cls ? Object.entries(USERS).filter(([id, u]) => u.student.cls === loginDraft.cls) : [];
+  const ready = loginDraft.cls && String(loginDraft.no).trim() && loginDraft.name.trim();
+  return `
+  <div class="card hero">
+    <div class="small" style="font-weight:900;letter-spacing:2px">MUSIC TASTE LAB · 중학교 3학년 음악</div>
+    <h1>나의 음악 취향 연구소</h1>
+    <div>음악 심리학 연구 7편을 바탕으로 나의 음악 취향을 분석하고, 직접 검증하고, 보고서로 정리해요.</div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h3>🙋 누구세요?</h3>
+      ${lastU ? `<button class="green big" style="width:100%;margin-bottom:12px" data-act="continue">▶ ${esc(lastU.student.cls)}반 ${esc(lastU.student.no)}번 ${esc(lastU.student.name)}(으)로 계속하기</button><div class="muted small" style="margin-bottom:6px">내가 아니라면 아래에서 내 정보를 입력하세요.</div>` : ''}
+      <label class="f">① 우리 반</label>
+      <div class="class-pick">${Array.from({ length: CLASS_COUNT }, (_, k) => k + 1).map(c => `<button class="${loginDraft.cls === c ? 'on' : ''}" data-cls="${c}">${c}반</button>`).join('')}</div>
+      <div class="grid g2" style="gap:10px">
+        <div><label class="f">② 번호</label><input type="number" min="1" max="40" id="lg_no" value="${esc(loginDraft.no)}" placeholder="예: 15"></div>
+        <div><label class="f">③ 이름</label><input id="lg_name" value="${esc(loginDraft.name)}" placeholder="예: 김연성"></div>
+      </div>
+      <button class="primary big" style="width:100%;margin-top:14px" data-act="login" ${ready ? '' : 'disabled'}>시작하기 →</button>
+      ${here.length ? `<div class="muted small" style="margin-top:12px">이 기기에 저장된 ${loginDraft.cls}반 학생: ${here.map(([id, u]) => `<button class="sm" data-act="pick" data-id="${esc(id)}">${esc(u.student.no)}번 ${esc(u.student.name)}</button>`).join(' ')}</div>` : ''}
+      <div class="muted small" style="margin-top:10px">💡 반·번호·이름을 똑같이 입력하면 언제든 내 기록이 이어져요.</div>
+    </div>
+    <div class="card">
+      <h3>🗺️ 이렇게 진행해요</h3>
+      <div class="steps" style="grid-template-columns:1fr">
+        <div class="card"><span class="tag pink">전날 과제</span> <b>📥 취향 입력</b> — 6문항, 약 8분 (휴대폰 가능)</div>
+        <div class="card"><span class="tag blue">1차시</span> <b>📊 결과 확인</b> — 분석이 나와 맞는지 검증하고 고치기</div>
+        <div class="card"><span class="tag blue">1차시</span> <b>📝 보고서 → 패들렛</b> — 미니 연구보고서를 반 패들렛에 올리고 댓글 달기</div>
+        <div class="card"><span class="tag green">2·3차시</span> <b>🎪 축제 기획 → 🎧 청음 부스</b> — 내 취향 데이터로 축제 만들기</div>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ----- 과제: 취향 입력 ----- */
+VIEWS.input = () => {
+  const i = S.input, st = inputStatus(), done = st.filter(x => x.ok).length;
+  const slider = (k, label, l, r) => `<label class="f">${label} — <span data-out="${k}">${WORD[k][i[k] - 1]}</span></label>
+    <input type="range" min="1" max="5" step="1" data-path="input.${k}" value="${i[k]}"><div class="slider-ends"><span>${l}</span><span>${r}</span></div>`;
+  return `
+  <div class="row between" style="margin-bottom:10px">
+    <div><h2>📥 전날 과제 · 나의 음악 취향 입력</h2><div class="muted">정답은 없어요. 지금의 나에게 솔직하게! 입력한 내용은 자동 저장돼요.</div></div>
+  </div>
+  <div class="grid g-side">
+    <div>
+      <div class="card">
+        <h3><span class="qno">Q1</span>이 장르, 어때요?</h3>
+        <div class="muted small">잘 모르는 장르는 <b>❓ 잘 몰라요</b>를 누르면 장르 카드가 열려요. 읽고 들어본 뒤 다시 골라도 좋아요!</div>
+        ${GENRES.map(g => `<div class="genre-row">
+          <div class="genre-name">${g.emoji} ${g.name} <button class="ghost" data-genre="${g.k}" title="장르 카드 보기">ⓘ</button></div>
+          <div class="rate">${RATE.map(x => `<button class="${i.genres[g.k] === x.v ? 'on' : ''} ${x.v < 0 ? 'unknown' : ''}" data-rate="${g.k}" data-v="${x.v}">${x.t}</button>`).join('')}</div>
+        </div>`).join('')}
+      </div>
+      <div class="card">
+        <h3><span class="qno">Q2</span>내가 끌리는 소리는?</h3>
+        ${slider('tempo', '🥁 템포(빠르기)', '느림', '빠름')}
+        ${slider('energy', '⚡ 에너지', '잔잔함', '강렬함')}
+        ${slider('mood', '🌤️ 분위기', '어둡고 쓸쓸함', '밝고 신남')}
+      </div>
+      <div class="card">
+        <h3><span class="qno">Q3</span>노래를 들을 때 가장 귀 기울이는 것은? <span class="muted small">(여러 개)</span></h3>
+        ${chips('input.elements', ELEMENTS)}
+      </div>
+      <div class="card">
+        <h3><span class="qno">Q4</span>요즘 나의 최애곡 3곡</h3>
+        ${i.songs.map((s, k) => `<div class="song-row"><b>${k + 1}</b><input data-path="input.songs.${k}.t" value="${esc(s.t)}" placeholder="곡 이름"><input data-path="input.songs.${k}.a" value="${esc(s.a)}" placeholder="가수/아티스트"></div>`).join('')}
+      </div>
+      <div class="card">
+        <h3><span class="qno">Q5</span>소름 돋는 순간이 있는 곡은?</h3>
+        <div class="muted small">노래를 듣다가 "이 부분!" 하고 소름이 돋거나 가슴이 벅찬 순간을 떠올려 보세요.</div>
+        <label class="f">곡 이름</label>${field('input.chill.song', '예: 한 페이지가 될 수 있게')}
+        <label class="f">어느 부분? (시간이나 구간)</label>${field('input.chill.at', '예: 2분 30초 후렴 시작, 마지막 고음')}
+        <label class="f">그때 어떤 느낌이 드나요?</label>${area('input.chill.feel', '예: 드럼이 쾅 들어오는 순간 가슴이 뻥 뚫리고, 뭐든 할 수 있을 것 같은 기분이 든다.', 3)}
+      </div>
+      <div class="card">
+        <h3><span class="qno">Q6</span>음악을 어디서 만나고, 어떤 감정을 느끼나요?</h3>
+        <label class="f">새 음악을 주로 만나는 곳 (여러 개)</label>${chips('input.places', PLACES.map(p => p.t))}
+        <label class="f">음악을 들을 때 나는… (여러 개)</label>${chips('input.emotions', EMOTIONS)}
+      </div>
+    </div>
+    <div class="card sticky" id="inputPanel">${inputPanel()}</div>
+  </div>`;
+};
+function inputPanel() {
+  const st = inputStatus(), done = st.filter(x => x.ok).length;
+  return `<h3>✅ 과제 체크</h3>
+    <div class="progress"><i style="width:${done / st.length * 100}%"></i></div>
+    <ul class="checklist" style="margin-top:10px">${st.map((x, k) => `<li>${x.ok ? '✅' : '⬜'} Q${k + 1}. ${x.t}${x.info ? ` <span class="muted">(${x.info})</span>` : ''}</li>`).join('')}</ul>
+    <button class="primary big" style="width:100%;margin-top:12px" data-nav="result" ${inputDone() ? '' : 'disabled'}>📊 결과 보기</button>
+    <div class="notice small" style="margin-top:12px">
+      <b>🏠 집에서 과제를 했다면?</b><br>학교 노트북으로 가져가야 해요.<br>
+      <button class="blue" style="width:100%;margin-top:8px" data-act="sendLink" ${inputDone() ? '' : 'disabled'}>📤 학교로 가져갈 링크 보내기</button>
+      <div class="muted small" style="margin-top:6px">카카오톡 '나와의 채팅', 클래스룸, 이메일 등 <b>학교 노트북에서 열 수 있는 곳</b>으로 보내고, 학교에서 그 링크를 누르면 끝!</div>
+    </div>`;
+}
+
+/* ----- 결과 확인 ----- */
+VIEWS.result = () => {
+  if (!inputDone()) return `<div class="card" style="text-align:center;padding:40px"><h2>📊 아직 결과가 없어요</h2><p class="muted">과제(6문항)를 먼저 모두 입력해 주세요.</p><button class="primary" data-nav="input">📥 과제 하러 가기</button></div>`;
+  const auto = computeDims(), mine = S.self, r = ranked(finalDims());
+  const st = statements();
+  const nDone = st.filter(s => { const c = S.checks[s.id]; return c && c.v && (c.v === 'yes' || (c.why || '').trim()); }).length;
+  return `
+  <div class="row between" style="margin-bottom:10px">
+    <div><h2>📊 나의 음악 취향 분석 결과</h2><div class="muted">이 결과는 정답이 아니라 연구가 나에 대해 세운 <b>가설</b>이에요. 하나씩 읽고, 맞는지 직접 검증해 보세요!</div></div>
+  </div>
+  <div class="grid g-side">
+    <div>
+      ${st.map(s => { const c = S.checks[s.id] || {}; const ok = c.v && (c.v === 'yes' || (c.why || '').trim()); return `
+      <div class="stmt ${ok ? 'done' : ''}">
+        <h4>${s.title}</h4><p>${s.html}</p>
+        ${s.src.length ? `<span class="src">📄 근거: ${s.src.map(k => PAPERS[k].cite).join(', ')}</span>` : ''}
+        <div class="verdict">${[['yes', '✅ 맞아요'], ['part', '🤔 조금 달라요'], ['no', '❌ 아니에요']].map(([v, t]) => `<button class="${c.v === v ? 'on' : ''}" data-check="${s.id}" data-v="${v}">${t}</button>`).join('')}</div>
+        ${c.v ? `<input style="margin-top:8px" data-checkwhy="${s.id}" value="${esc(c.why || '')}" placeholder="${c.v === 'yes' ? '왜 맞다고 생각하나요? (선택, 쓰면 보고서가 풍성해져요)' : '어떤 점이 다른가요? 진짜 나는 어때요? (필수)'}">` : ''}
+      </div>`; }).join('')}
+    </div>
+    <div>
+      <div class="card sticky">
+        <h3>🗺️ 나의 취향 지도</h3>
+        <div class="radar-wrap">${radarSVG(auto, mine)}</div>
+        <div class="row small" style="justify-content:center;gap:14px"><span><b style="color:#ff4fa3">━</b> 앱 분석</span>${mine ? '<span><b style="color:#3d5afe">┅</b> 내가 수정한 나</span>' : ''}</div>
+        <div style="margin-top:8px">${dimBars(finalDims())}</div>
+        <details style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:700">✏️ 지도가 나와 다르다면 직접 고치기</summary>
+          <div style="margin-top:8px">${DIMS.map(d => `<label class="f small" style="margin:6px 0 0">${d.emoji} ${d.name} <span data-out="self${d.k}">${finalDims()[d.k]}</span></label><input type="range" min="0" max="100" step="5" data-self="${d.k}" value="${finalDims()[d.k]}">`).join('')}
+          ${mine ? '<button class="sm" style="margin-top:8px" data-act="resetSelf">↺ 앱 분석으로 되돌리기</button>' : ''}</div></details>
+        <details style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:700">🔍 점수는 어떻게 계산했나요?</summary>
+          <div class="small" style="margin-top:6px;line-height:1.7">① 장르마다 연구에서 묶인 취향 축이 있어요 (장르 도감 참고).<br>② 😍좋아요 1점 · 🙂보통 0.5점 · 😐별로 0점, ❓잘 몰라요는 계산에서 빼요.<br>③ 축마다 장르 점수의 평균을 내고(75%), Q2·Q3의 소리 취향을 더해요(25%).<br>그래서 <b>장르를 '잘 몰라요'로 많이 고르면</b> 결과가 덜 정확할 수 있어요.</div></details>
+        <div class="notice small" style="margin-top:12px">검증 ${nDone}/${st.length} 완료 ${checksDone() ? '<span class="ok">✓</span>' : ''}</div>
+        <button class="primary" style="width:100%;margin-top:10px" data-nav="report" ${checksDone() ? '' : 'disabled'}>📝 보고서 쓰러 가기</button>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ----- 보고서 & 패들렛 ----- */
+VIEWS.report = () => {
+  if (!checksDone()) return `<div class="card" style="text-align:center;padding:40px"><h2>📝 먼저 결과를 확인해 주세요</h2><p class="muted">결과 화면에서 모든 분석 문장을 '맞아요 / 조금 달라요 / 아니에요'로 검증하면 보고서 초안이 자동으로 만들어져요.</p><button class="primary" data-nav="result">📊 결과 확인하러 가기</button></div>`;
+  if (!S.report.intro && !S.report.body && !S.report.concl) { Object.assign(S.report, draftReport()); save(); }
+  const r = ranked(finalDims()), padlet = PADLETS[S.student.cls];
+  const b = blanks(S.report.intro + S.report.body + S.report.concl).length;
+  return `
+  <div class="row between" style="margin-bottom:10px">
+    <div><h2>📝 1차시 · 나의 음악 취향 미니 연구보고서</h2><div class="muted">앱이 초안을 만들어 두었어요. <span class="blank-warn">[ 대괄호 ]</span> 부분을 내 말로 바꾸고, 자유롭게 고쳐 쓰세요.</div></div>
+    <button class="sm ghost" data-act="redraft">↺ 초안 다시 만들기</button>
+  </div>
+  <div class="grid g-side">
+    <div class="card">
+      <label class="f">📍 서론 — 나에 대한 가설 + 근거 데이터 <span class="muted">(내 취향: 장르·템포·음색·가사 등)</span></label>
+      ${area('report.intro', '', 6)}<div class="muted small" data-live="intro"></div>
+      <label class="f">📍 본론 — 검증 + 논문과의 대화 + 내 취향과 음악 산업</label>
+      <div class="frames"><span class="small" style="font-weight:700;margin-right:4px">📄 연구 문장 틀:</span>${Object.entries(PAPERS).map(([k, p]) => `<button class="sm ghost" data-paper="${k}">+ ${p.cite}</button>`).join('')}</div>
+      ${area('report.body', '', 10)}<div class="muted small" data-live="body"></div>
+      <label class="f">📍 결론 — 새롭게 알게 된 나</label>
+      ${area('report.concl', '', 3)}<div class="muted small" data-live="concl"></div>
+    </div>
+    <div>
+      <div class="card sticky">
+        <h3>📌 패들렛에 올리기</h3>
+        <div class="notice small" style="margin-bottom:8px" data-live="blanks">${b ? `<span class="warn">아직 채우지 않은 [ 빈칸 ]이 ${b}개 있어요.</span>` : '<span class="ok">✓ 빈칸을 모두 채웠어요!</span>'}</div>
+        <ol class="howto">
+          <li><b>내 카드 이미지 저장</b><br><button class="sm blue" data-act="cardModal">🖼️ 카드 보기 · 저장</button></li>
+          <li><b>패들렛 열기</b><br>${padlet ? `<a class="btn sm primary" href="${esc(padlet)}" target="_blank" rel="noopener">📌 ${S.student.cls}반 패들렛 열기 ↗</a>` : '<span class="warn small">선생님이 알려준 패들렛 주소로 들어가세요.</span>'}</li>
+          <li><b>내 칸 찾기</b>: <b>${r[0].emoji} ${r[0].name} (${r[0].en})</b> 칸의 <b>＋</b>를 눌러요.</li>
+          <li><b>제목</b> 붙여넣기<br><button class="sm" data-act="copySubject">📋 제목 복사</button> <span class="muted small">${esc(subjectLine())}</span></li>
+          <li><b>본문</b> 붙여넣기<br><button class="sm primary" data-act="copyBody">📋 본문 복사</button></li>
+          <li><b>이미지 첨부</b>: 저장한 카드 이미지를 끌어다 놓거나 📎 버튼으로 올리고 <b>게시</b>!</li>
+        </ol>
+        <h3 style="margin-top:16px">💬 댓글 미션</h3>
+        <div class="small" style="line-height:1.7">같은 취향 친구와는 금방 친해질 수 있어요 <span class="src">📄 Boer et al. (2011)</span>. 그래서 오늘은 반대로, <b>나와 다른 칸</b>에 있는 친구 2명의 글에 댓글을 달아요!</div>
+        <button class="sm" style="margin-top:8px" data-act="copyDiscovery">📋 NEW DISCOVERY 댓글 양식 복사</button>
+        <div class="muted small" style="margin-top:6px">[NEW DISCOVERY] OO이의 보고서를 읽고 [장르/아티스트/곡명]을 새롭게 알게 되었어. 나도 들어보니 [이유] 때문에 관심이 가!</div>
+      </div>
+    </div>
+  </div>`;
+};
+function myCardHTML() {
+  const i = S.input, v = finalDims(), r = ranked(v);
+  const liked = GENRES.filter(g => i.genres[g.k] === 1);
+  return `<div class="mycard" id="mycard">
+    <div class="row between"><b>${esc(studentTag())}</b><span class="tag pink">나의 음악 취향 연구</span></div>
+    <div class="display" style="font-size:26px;margin:8px 0 2px">${r[0].emoji} ${r[0].name} × ${r[1].emoji} ${r[1].name}</div>
+    <div class="muted small">${r[0].en} · ${r[1].en}</div>
+    <div class="radar-wrap" style="margin:6px 0">${radarSVG(v)}</div>
+    <div class="small" style="line-height:1.8">
+      <b>좋아하는 장르</b> ${liked.map(g => g.emoji + ' ' + esc(g.name)).join(' · ') || '-'}<br>
+      <b>끌리는 소리</b> ${WORD.tempo[i.tempo - 1]} 템포 · ${WORD.energy[i.energy - 1]} 에너지 · ${WORD.mood[i.mood - 1]} 분위기<br>
+      <b>최애곡</b> ${i.songs.filter(s => s.t.trim()).map(s => esc(s.t)).join(' · ')}<br>
+      <b>소름 순간</b> 「${esc(i.chill.song)}」 ${esc(i.chill.at)}
+    </div></div>`;
+}
+
+/* ----- 장르 도감 ----- */
+function genreCard(g, extra = '') {
+  const axes = Object.keys(g.w).map(k => `${DIM[k].emoji} ${DIM[k].name}`).join(' · ');
+  return `<div class="card gcard" style="margin:0"><h3>${g.emoji} ${g.name}</h3>
+    <span class="tag">${axes}</span>
+    <dl><dt>🌱 뿌리</dt><dd>${g.root}</dd><dt>🔊 소리의 특징</dt><dd>${g.sound}</dd><dt>🎤 대표 아티스트</dt><dd>${g.artists}</dd><dt>🧭 취향 축</dt><dd>${g.why}</dd></dl>
+    <a class="btn sm" style="margin-top:10px" href="https://www.youtube.com/results?search_query=${encodeURIComponent(g.name.split('/')[0] + ' 대표곡')}" target="_blank" rel="noopener">▶ 유튜브에서 들어보기 ↗</a>${extra}</div>`;
+}
+VIEWS.genres = () => `
+  <h2>📚 장르 도감</h2>
+  <div class="muted" style="margin-bottom:12px">장르마다 어떤 뿌리와 소리의 특징이 있는지, 연구의 어떤 취향 축과 가까운지 알아봐요. 장르의 경계는 칼로 자르듯 나뉘지 않아요. 한 곡 안에 여러 장르가 섞이기도 해요!</div>
+  <div class="card" style="margin-bottom:16px"><h3>🧭 다섯 가지 취향 축</h3>${DIMS.map(d => `<div style="margin:6px 0"><b>${d.emoji} ${d.name} (${d.en})</b> — ${d.desc}</div>`).join('')}
+  <div class="src">📄 Rentfrow & Gosling (2003)이 음악 취향을 4가지로 묶은 뒤, 후속 연구에서 5가지(MUSIC 모델)로 발전했고 Greenberg et al. (2022)는 53개국에서 비슷한 구조를 확인했어요.</div></div>
+  <div class="gcards">${GENRES.map(g => genreCard(g)).join('')}</div>`;
+
+/* ----- 2차시: 축제 기획 ----- */
+const TIERS = [
+  { name: '헤드라이너', fee: 1500000, desc: '축제의 가장 마지막·가장 큰 무대를 책임지는 간판 아티스트' },
+  { name: '서브 헤드라이너', fee: 800000, desc: '헤드라이너 바로 앞, 분위기를 최고조로 끌어올리는 팀' },
+  { name: '미들 라인업', fee: 400000, desc: '축제의 허리. 장르 다양성을 채우는 탄탄한 팀' },
+  { name: '언더카드', fee: 200000, desc: '이른 시간대 무대를 여는 팀. 신선한 발견의 즐거움' },
+  { name: '루키', fee: 100000, desc: '데뷔 초 신인 또는 학생 공연팀' },
+  { name: '첫 내한/쇼케이스', fee: 1000000, desc: '국내 첫 공연·신곡 최초 공개 등 화제성 있는 특별 무대' }
+];
+const BOOTH_KINDS = [{ name: '체험 부스', cost: 300000 }, { name: '전시 부스', cost: 200000 }, { name: 'F&B(먹거리) 부스', cost: 250000 }, { name: '굿즈/MD 부스', cost: 200000 }];
+const BUDGET_MAX = 7000000, SOUND_MAX = 2600000, LIGHT_MAX = 400000;
+const ROW_TPL = {
+  lineup: () => ({ tier: '미들 라인업', artist: '', fee: 400000 }), timetable: () => ({ time: '', stage: '', act: '' }),
+  setlist: () => ({ artist: '', song: '', url: '' }), booths: () => ({ kind: '체험 부스', name: '', cost: 300000 })
+};
+VIEWS.fest = () => {
+  const f = S.fest;
+  const tierOpts = sel => TIERS.map(t => `<option ${t.name === sel ? 'selected' : ''}>${t.name}</option>`).join('');
+  const boothOpts = sel => BOOTH_KINDS.map(t => `<option ${t.name === sel ? 'selected' : ''}>${t.name}</option>`).join('');
+  const myData = inputDone() ? (() => { const r = ranked(finalDims()); return `<div class="card"><h3>🧾 1차시 내 취향 데이터</h3><div class="small" style="line-height:1.8">대표 취향 <b>${r[0].emoji} ${r[0].name}</b> · ${r[1].emoji} ${r[1].name}<br>최애곡 ${S.input.songs.filter(s => s.t.trim()).map(s => esc(s.t)).join(' · ')}<br>소름 곡 「${esc(S.input.chill.song)}」</div><button class="sm" style="margin-top:8px" data-act="songsToSetlist">➕ 내 최애곡을 셋리스트에 넣기</button><div class="muted small" style="margin-top:6px">모둠 친구들의 패들렛 보고서도 참고해 우리 반 취향에 맞는 라인업을 짜 보세요.</div></div>`; })() : '';
+  return `
+  <div style="margin-bottom:12px"><h2>🎪 2차시 · 데이터 기반 축제 기획 & 예산 게임</h2><div class="muted">수행평가 2-① · 가수 나열이 아니라 공간·타임테이블·부대 문화까지 기획해요.</div></div>
+  <div class="grid g-side">
+    <div>
+      <div class="card"><h3>① 축제 유형</h3><div class="type-pick">
+        <button class="${f.type === 'school' ? 'on' : ''}" data-radio="fest.type" data-val="school">🏫 <b>학교 축제</b><br><span class="small">연성제처럼 우리 학교 구성원 모두가 즐기는 축제</span></button>
+        <button class="${f.type === 'taste' ? 'on' : ''}" data-radio="fest.type" data-val="taste">🎧 <b>취향 맞춤형 축제</b><br><span class="small">펜타포트처럼 특정 장르·취향 중심의 축제</span></button></div></div>
+      <div class="card"><h3>② 기본 정보</h3><div class="grid g2" style="gap:10px">
+        <div><label class="f">축제명 *</label>${field('fest.name', '예: 연성 사운드 웨이브')}</div>
+        <div><label class="f">슬로건 *</label>${field('fest.slogan', '예: 우리의 취향이 무대가 되는 날')}</div>
+        <div><label class="f">일시 *</label>${field('fest.date', '예: 2026. 10. 30.(금) 13:00~17:00')}</div>
+        <div><label class="f">장소 *</label>${field('fest.venue', '예: 운동장 메인 스테이지')}</div></div>
+        <label class="f">배경 및 목적</label>${chips('fest.purpose', ['공동체', '안전', '학생 주도성', '취향 다양성 존중', '지역 연계'])}
+        <div style="margin-top:8px">${area('fest.purposeText', '왜 이 축제를 기획했나요? 우리 반 취향 데이터에서 무엇을 발견했나요?', 3)}</div></div>
+      <div class="card"><div class="row between"><h3>③ 라인업 (3팀 이상) *</h3><button class="sm" data-add="lineup">+ 팀 추가</button></div>
+        <table class="rows"><tr><th style="width:150px">포지션</th><th>아티스트</th><th style="width:130px">가상 섭외비(원)</th><th></th></tr>
+        ${f.lineup.map((l, k) => `<tr><td><select data-path="fest.lineup.${k}.tier" data-tier="${k}">${tierOpts(l.tier)}</select></td><td><input data-path="fest.lineup.${k}.artist" value="${esc(l.artist)}" placeholder="아티스트/공연팀"></td><td><input type="number" step="50000" min="0" data-path="fest.lineup.${k}.fee" value="${l.fee}"></td><td><button class="sm ghost" data-del="lineup" data-i="${k}">✕</button></td></tr>`).join('')}</table>
+        <details style="margin-top:10px"><summary class="small" style="cursor:pointer;font-weight:700">📖 라인업 용어 사전</summary><div class="glossary" style="margin-top:6px">${TIERS.map(t => `<b>${t.name}</b> (${won(t.fee)}) — ${t.desc}`).join('<br>')}</div></details></div>
+      <div class="card"><div class="row between"><h3>④ 타임테이블 *</h3><button class="sm" data-add="timetable">+ 시간 추가</button></div>
+        <table class="rows"><tr><th style="width:130px">시간</th><th style="width:140px">무대/공간</th><th>내용</th><th></th></tr>
+        ${f.timetable.map((t, k) => `<tr><td><input data-path="fest.timetable.${k}.time" value="${esc(t.time)}" placeholder="13:00~13:30"></td><td><input data-path="fest.timetable.${k}.stage" value="${esc(t.stage)}" placeholder="메인 스테이지"></td><td><input data-path="fest.timetable.${k}.act" value="${esc(t.act)}" placeholder="오프닝 · 루키 공연"></td><td><button class="sm ghost" data-del="timetable" data-i="${k}">✕</button></td></tr>`).join('')}</table></div>
+      <div class="card"><div class="row between"><h3>⑤ 셋리스트 * <span class="muted small">(유튜브 링크 → 청음 부스에 자동 연결)</span></h3><button class="sm" data-add="setlist">+ 곡 추가</button></div>
+        <table class="rows"><tr><th style="width:140px">아티스트</th><th>곡명</th><th>유튜브 링크</th><th></th></tr>
+        ${f.setlist.map((s, k) => `<tr><td><input data-path="fest.setlist.${k}.artist" value="${esc(s.artist)}"></td><td><input data-path="fest.setlist.${k}.song" value="${esc(s.song)}"></td><td><input type="url" data-path="fest.setlist.${k}.url" value="${esc(s.url)}" placeholder="https://youtu.be/..."></td><td><button class="sm ghost" data-del="setlist" data-i="${k}">✕</button></td></tr>`).join('')}</table>
+        <div class="muted small" style="margin-top:6px">유튜브에서 곡을 찾은 뒤 주소창의 주소를 복사해 붙여넣으세요.</div></div>
+      <div class="card"><div class="row between"><h3>⑥ 부대 문화 · 부스</h3><button class="sm" data-add="booths">+ 부스 추가</button></div>
+        <table class="rows"><tr><th style="width:170px">종류</th><th>부스 이름/내용</th><th style="width:130px">비용(원)</th><th></th></tr>
+        ${f.booths.map((b, k) => `<tr><td><select data-path="fest.booths.${k}.kind" data-boothkind="${k}">${boothOpts(b.kind)}</select></td><td><input data-path="fest.booths.${k}.name" value="${esc(b.name)}" placeholder="예: 나의 취향 지도 체험"></td><td><input type="number" step="10000" min="0" data-path="fest.booths.${k}.cost" value="${b.cost}"></td><td><button class="sm ghost" data-del="booths" data-i="${k}">✕</button></td></tr>`).join('')}</table></div>
+      <div class="card"><h3>⑦ 관람 안내 * &amp; 세부 설명 *</h3>
+        <label class="f">관람 안내 (입장 방법, 안전 수칙, 준비물 등)</label>${area('fest.guide', '예: 학생증 지참 입장 / 스탠딩 구역 질서 유지', 3)}
+        <label class="f">세부 설명 (공간 구성, 기획 의도, 부대 문화 등)</label>${area('fest.detail', '무대 배치, 부스 동선, 우리 반 취향 데이터가 라인업에 어떻게 반영되었는지 설명해요.', 4)}</div>
+    </div>
+    <div>${myData}<div class="card" id="budgetPanel">${budgetPanel()}</div></div>
+  </div>`;
+};
+function budgetCalc() {
+  const f = S.fest, lineup = f.lineup.reduce((a, l) => a + num(l.fee), 0), booths = f.booths.reduce((a, b) => a + num(b.cost), 0);
+  const parts = [['음향', num(f.sound), '#3d5afe'], ['조명', num(f.light), '#ffb400'], ['라인업', lineup, '#ff4fa3'], ['부스', booths, '#00c389'], ['홍보', num(f.promo), '#9b5cff'], ['기타', num(f.etc), '#888']];
+  return { parts, spent: parts.reduce((a, p) => a + p[1], 0), budget: Math.min(num(f.budget), BUDGET_MAX) };
+}
+function suggestedBudget() {
+  const f = S.fest;
+  let pts = festItems().filter(i => i[1]).length * 8;
+  pts += Math.min(12, f.purpose.length * 3 + (f.purposeText.trim().length >= 40 ? 3 : 0));
+  pts += Math.min(12, Math.floor(f.detail.trim().length / 25));
+  pts += Math.min(6, f.booths.filter(b => b.name.trim()).length * 2) + Math.min(6, f.timetable.filter(t => t.act.trim()).length);
+  return Math.round((3000000 + Math.min(100, pts) / 100 * 4000000) / 100000) * 100000;
+}
+function budgetPanel() {
+  const f = S.fest, b = budgetCalc(), remain = b.budget - b.spent, warns = [];
+  if (!b.budget) warns.push('선생님께 기획안을 보여 주고 예산을 배정받으세요.');
+  if (b.budget && remain < 0) warns.push(`예산을 ${won(-remain)} 초과했어요!`);
+  if (!num(f.sound)) warns.push('음향비가 0원이면 공연을 할 수 없어요.');
+  return `<h3>💰 예산 게임</h3>
+    <label class="f">교사 배정 예산 (최대 700만 원)</label>
+    <div class="row"><input type="number" step="100000" min="0" max="${BUDGET_MAX}" data-path="fest.budget" value="${f.budget}" style="flex:1"><button class="sm" data-act="suggestBudget">심사 추천 ${won(suggestedBudget())}</button></div>
+    <div class="muted small">추천액은 기획안의 구체성으로 계산돼요. 최종 배정은 선생님이 결정해요.</div>
+    <label class="f">🔊 음향비 <span class="muted">(필수, 최대 260만 원)</span> — <b data-out="sound">${won(f.sound)}</b></label>
+    <input type="range" min="0" max="${SOUND_MAX}" step="50000" data-path="fest.sound" value="${f.sound}">
+    <label class="f">💡 조명비 <span class="muted">(최대 40만 원)</span> — <b data-out="light">${won(f.light)}</b></label>
+    <input type="range" min="0" max="${LIGHT_MAX}" step="10000" data-path="fest.light" value="${f.light}">
+    <div class="grid g2" style="gap:8px"><div><label class="f">📣 홍보비</label><input type="number" step="10000" min="0" data-path="fest.promo" value="${f.promo}"></div><div><label class="f">🧰 기타(안전·운영)</label><input type="number" step="10000" min="0" data-path="fest.etc" value="${f.etc}"></div></div>
+    <div style="margin-top:14px" data-live="budget">${budgetSummary()}</div>
+    <h3 style="margin-top:16px">📋 필수 8대 항목</h3>
+    <ul class="checklist">${festItems().map(([n, ok]) => `<li>${ok ? '✅' : '⬜'} ${n}</li>`).join('')}</ul>
+    ${warns.length ? `<div class="notice" style="margin-top:10px">${warns.map(w => `<div class="warn">⚠️ ${w}</div>`).join('')}</div>` : '<div class="notice ok" style="margin-top:10px">✓ 예산 규칙을 모두 지켰어요!</div>'}`;
+}
+function budgetSummary() {
+  const b = budgetCalc(), remain = b.budget - b.spent, base = Math.max(b.budget, b.spent, 1);
+  return `<div class="row between"><span class="muted">집행 ${won(b.spent)}</span><span class="${remain < 0 ? 'warn' : 'ok'}">잔액 ${won(remain)}</span></div>
+    <div class="bar" style="margin-top:6px">${b.parts.map(p => `<i style="width:${p[1] / base * 100}%;background:${p[2]}" title="${p[0]} ${won(p[1])}"></i>`).join('')}</div>
+    <div class="legend">${b.parts.map(p => `<s style="background:${p[2]}"></s><span>${p[0]}</span><b>${won(p[1])}</b>`).join('')}</div>`;
+}
+
+/* ----- 3차시: 청음 부스 ----- */
+function boothPayload() { const f = S.fest; return { n: f.name, s: f.slogan, d: f.date, v: f.venue, t: f.setlist.filter(x => x.song.trim() || ytId(x.url)).map(x => [x.artist, x.song, ytId(x.url) || '']) }; }
+function boothUrl() {
+  const p = boothPayload();
+  if (S.booth.qrMode === 'yt') { const ids = p.t.map(t => t[2]).filter(Boolean); return ids.length ? 'https://www.youtube.com/watch_videos?video_ids=' + ids.join(',') : ''; }
+  return appBase() + '#booth=' + enc(p);
+}
+function tracksHTML(tracks) {
+  return `<div class="tracks">${tracks.map(([a, s, id]) => `<div class="track">
+    ${id ? `<div class="thumb play" data-play="${id}" style="background-image:url(https://img.youtube.com/vi/${id}/hqdefault.jpg)"></div>` : '<div class="thumb">🎵</div>'}
+    <div class="meta"><b>${esc(s || '제목 없음')}</b><br><span class="muted">${esc(a)}</span>${id ? `<br><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" class="small">유튜브에서 열기 ↗</a>` : '<br><span class="warn small">유튜브 링크 없음</span>'}</div></div>`).join('') || '<div class="muted">셋리스트가 비어 있어요.</div>'}</div>`;
+}
+const RATE_KEYS = [['lineup', '라인업 구성'], ['plan', '기획·예산 타당성'], ['poster', '홍보물 디자인'], ['listen', '청음 경험']];
+let fbDraft = { to: '', lineup: 0, plan: 0, poster: 0, listen: 0, good: '', suggest: '' };
+VIEWS.booth = () => {
+  const p = boothPayload(), url = boothUrl();
+  return `
+  <div style="margin-bottom:12px"><h2>🎧 3차시 · 디지털 청음 부스 & 갤러리 워크</h2><div class="muted">수행평가 2-② · 책상 위 세팅: [A5 포스터 + 기획 요약서 + 청음 QR + 피드백 포스트잇]</div></div>
+  <div class="grid g-side">
+    <div>
+      <div class="card"><h3>🎶 ${esc(p.n || '축제명을 입력하세요')} 셋리스트 미리 듣기</h3><div class="muted small" style="margin-bottom:10px">썸네일을 누르면 바로 재생돼요. 셋리스트는 '축제 기획' 화면에서 고칠 수 있어요.</div>${tracksHTML(p.t)}</div>
+      <div class="card"><h3>📝 친구 축제에 피드백 남기기</h3>
+        <label class="f">피드백 대상 (모둠/축제명)</label><input id="fb_to" value="${esc(fbDraft.to)}" placeholder="예: 3모둠 - 밴드 붐 페스타">
+        <div class="grid g2" style="gap:6px;margin-top:10px">${RATE_KEYS.map(([k, l]) => `<div class="row between"><span class="small"><b>${l}</b></span><span class="stars">${[1, 2, 3, 4, 5].map(n => `<button data-star="${k}" data-n="${n}" class="${fbDraft[k] >= n ? 'on' : ''}">★</button>`).join('')}</span></div>`).join('')}</div>
+        <label class="f">👍 좋았던 점 (구체적으로)</label><textarea id="fb_good" rows="2" placeholder="예: 헤드라이너 앞에 루키 밴드를 배치해서 분위기가 점점 올라가는 흐름이 좋았어.">${esc(fbDraft.good)}</textarea>
+        <label class="f">💡 개선 제안 (건설적으로)</label><textarea id="fb_suggest" rows="2" placeholder="예: 조명비가 적어서 야간 무대가 어두울 것 같아. 홍보비를 조금 줄여 조명에 쓰면 어떨까?">${esc(fbDraft.suggest)}</textarea>
+        <div class="muted small" id="fbHint" style="margin-top:6px"></div>
+        <button class="primary" style="margin-top:10px" data-act="addFeedback">📮 피드백 남기기</button>
+        ${S.feedback.length ? `<h3 style="margin-top:18px">내가 남긴 피드백 (${S.feedback.length})</h3>${S.feedback.map((f, k) => `<div class="cmt ${constructive(f) ? 'good' : ''}"><div class="row between"><b>→ ${esc(f.to)}</b><button class="sm ghost" data-act="delFeedback" data-i="${k}">✕</button></div>${RATE_KEYS.map(([kk, l]) => `${l} ${'★'.repeat(f[kk])}`).join(' · ')}<br>👍 ${esc(f.good)}<br>💡 ${esc(f.suggest)}</div>`).join('')}` : ''}</div>
+    </div>
+    <div>
+      <div class="card"><h3>📲 청음 QR 코드</h3>
+        <div class="chips" style="margin-bottom:10px"><button class="chip ${S.booth.qrMode === 'yt' ? 'on' : ''}" data-radio="booth.qrMode" data-val="yt">유튜브 재생목록</button><button class="chip ${S.booth.qrMode === 'app' ? 'on' : ''}" data-radio="booth.qrMode" data-val="app">청음 웹페이지</button></div>
+        <div class="muted small" style="margin-bottom:10px">${S.booth.qrMode === 'yt' ? '셋리스트 유튜브 영상을 하나의 재생목록으로 묶어요.' : '썸네일과 곡 정보가 담긴 청음 페이지로 연결돼요.'}</div>
+        ${url ? `<div class="qrbox" id="qrbox"></div><div class="row" style="margin-top:10px"><button class="sm" data-act="copyBooth">🔗 링크 복사</button><a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener">↗ 열어 보기</a><button class="sm" data-act="downloadQR">⬇️ QR 저장</button></div>` : '<div class="notice">셋리스트에 유튜브 링크를 1곡 이상 넣으면 QR이 만들어져요.</div>'}</div>
+      <div class="card"><h3>🖨️ A5 홍보 포스터</h3><div class="muted small">Canva·미리캔버스로 만들어도 돼요. 빠르게 만들고 싶다면 기획안으로 A5 포스터를 자동 생성해 인쇄할 수 있어요(청음 QR 포함).</div>
+        <div class="row" style="margin-top:10px"><button class="blue" data-act="poster">🖼️ A5 포스터 만들기</button><button data-act="copySummary">📋 기획 요약서 복사</button></div></div>
+    </div>
+  </div>`;
+};
+
+/* ----- 평가 ----- */
+VIEWS.eval = () => {
+  const E = evalAreas();
+  const rows = (arr, key) => arr.map((x, k) => `<tr><td style="width:24px"><b>${k + 1}</b></td><td>${x.label}<div class="muted small">${x.why}</div></td>
+    <td style="width:70px;text-align:center">${x.teacher ? '👩‍🏫' : x.auto ? '✅' : '⬜'}<div class="muted small">${x.teacher ? '교사 확인' : '자동'}</div></td>
+    <td style="width:120px"><select data-manual="${key}" data-i="${k}"><option value="0" ${x.man === 0 ? 'selected' : ''}>${x.teacher ? '미확인' : '자동 판정'}</option><option value="1" ${x.man === 1 ? 'selected' : ''}>교사 인정</option><option value="-1" ${x.man === -1 ? 'selected' : ''}>교사 미인정</option></select></td>
+    <td style="width:40px;text-align:center;font-size:20px">${x.final ? '🟢' : '⚪'}</td></tr>`).join('');
+  return `
+  <div class="row between" style="margin-bottom:12px"><div><h2>✅ 수행평가 체크리스트 (40점)</h2><div class="muted">자동 판정 후 교사가 요소별로 인정/미인정을 조정해요. 패들렛 활동(영역1의 3·4번)은 교사가 패들렛에서 확인해요.</div></div>
+    <button class="blue" data-act="copyEval">📋 평가 결과 복사</button></div>
+  <div class="grid g3">
+    <div class="card"><div class="muted">영역 1 · 음악 취향 보고서</div><div class="score">${S.absent ? '-' : E.s1}<span class="muted" style="font-size:16px"> / 20</span></div></div>
+    <div class="card"><div class="muted">영역 2 · 축제 기획·홍보</div><div class="score">${S.absent ? '-' : E.s2}<span class="muted" style="font-size:16px"> / 20</span></div></div>
+    <div class="card" style="background:var(--accent);color:#fff"><div>${esc(studentTag())} · 총점</div><div class="score">${E.total}<span style="font-size:16px"> / 40</span></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>영역 1. 음악 취향 데이터 보고서 작성하기 (20점)</h3><table class="rubric">${rows(E.A1, 'a1')}</table></div>
+  <div class="card"><h3>영역 2. 축제 기획 및 홍보하기 (20점)</h3><table class="rubric">${rows(E.A2, 'a2')}</table></div>
+  <div class="card"><div class="muted">채점 구조: 영역별 4개 요소 만족 20점 · 3개 16점 · 2개 12점 · 1개 8점 · 미만족 4점 (기본 점수 8점, 미인정 결시/불성실 참여 시 3점)</div>
+    <label class="row" style="margin-top:8px;font-weight:700"><input type="checkbox" data-act="absent" ${S.absent ? 'checked' : ''}> 미인정 결시 / 불성실 참여 (총점 3점 처리)</label></div>`;
+};
+
+/* =========================================================
+   7. 렌더 & 이벤트
+   ========================================================= */
+function applyChrome() {
+  document.documentElement.dataset.theme = PREF.theme;
+  document.body.classList.toggle('mobile', PREF.mobile);
+  $('#themeSel').value = PREF.theme;
+  $('#viewToggle').textContent = PREF.mobile ? '🖥️ 16:9' : '📱 9:16';
+}
+function render() {
+  if (!S && VIEW !== 'home') VIEW = 'home';
+  applyChrome(); renderNav();
+  $('#view').innerHTML = (VIEWS[VIEW] || VIEWS.home)();
+  if (VIEW === 'report') refreshLive();
+  if (VIEW === 'booth') { drawQR(); fbHint(); }
+}
+function go(v) { VIEW = v; if (S) { S.view = v; save(); } render(); $('#view').scrollTop = 0; window.scrollTo(0, 0); }
+function keepScroll(fn) { const v = $('#view'), y = v.scrollTop, wy = window.scrollY; fn(); v.scrollTop = y; window.scrollTo(0, wy); }
+
+function refreshLive() {
+  const r = S.report;
+  ['intro', 'body', 'concl'].forEach(k => {
+    const el = $(`[data-live="${k}"]`); if (!el) return;
+    const b = blanks(r[k]).length;
+    el.innerHTML = `${r[k].trim().length}자${k === 'body' ? ` · 산업 키워드: ${INDUSTRY_KEYS.filter(x => r.body.includes(x)).join(', ') || '없음'}` : ''}${b ? ` · <span class="warn">빈칸 ${b}개</span>` : ' · <span class="ok">✓</span>'}`;
+  });
+  const bl = $('[data-live="blanks"]'); if (bl) { const b = blanks(r.intro + r.body + r.concl).length; bl.innerHTML = b ? `<span class="warn">아직 채우지 않은 [ 빈칸 ]이 ${b}개 있어요.</span>` : '<span class="ok">✓ 빈칸을 모두 채웠어요!</span>'; }
+}
+function fbHint() {
+  const h = $('#fbHint'); if (!h) return;
+  const soft = /(면 어떨까|면 좋겠|추천|제안|바꾸|추가|줄이|늘리)/.test(fbDraft.suggest);
+  h.innerHTML = `건설적 피드백 체크: ${fbDraft.good.trim().length >= 10 ? '✅' : '⬜'} 좋았던 점 10자↑ · ${fbDraft.suggest.trim().length >= 15 ? '✅' : '⬜'} 개선 제안 15자↑ · ${soft ? '✅' : '⬜'} 대안 제시("~하면 어떨까?")`;
+}
+function drawQR() {
+  const box = $('#qrbox'); if (!box) return;
+  box.innerHTML = '';
+  if (typeof QRCode === 'undefined') { box.innerHTML = '<div class="small" style="color:#111">QR 기능을 불러오지 못했어요. 인터넷 연결을 확인하세요.</div>'; return; }
+  try { new QRCode(box, { text: boothUrl(), width: 220, height: 220, correctLevel: QRCode.CorrectLevel.L }); if (!S.booth.qrMade) { S.booth.qrMade = true; save(); } }
+  catch (e) { box.innerHTML = '<div class="small" style="color:#111">링크가 너무 길어 QR을 만들 수 없어요. 유튜브 재생목록 모드를 쓰세요.</div>'; }
+}
+function refreshDerived(path) {
+  if (VIEW === 'input') {
+    $('#inputPanel').innerHTML = inputPanel();
+    ['tempo', 'energy', 'mood'].forEach(k => { const o = $(`[data-out="${k}"]`); if (o) o.textContent = WORD[k][S.input[k] - 1]; });
+  }
+  if (VIEW === 'report') refreshLive();
+  if (VIEW === 'fest') {
+    if (/^fest\.(budget|sound|light|promo|etc)$/.test(path)) {
+      $('[data-out="sound"]').textContent = won(S.fest.sound); $('[data-out="light"]').textContent = won(S.fest.light);
+      $('[data-live="budget"]').innerHTML = budgetSummary();
+    } else $('#budgetPanel').innerHTML = budgetPanel();
+  }
+}
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'lg_no') { loginDraft.no = t.value; return updateLoginBtn(); }
+  if (t.id === 'lg_name') { loginDraft.name = t.value; return updateLoginBtn(); }
+  if (!S) return;
+  if (t.dataset.path) {
+    let v = t.value;
+    if (t.type === 'number' || t.type === 'range') v = num(v);
+    if (t.dataset.path === 'fest.budget' && v > BUDGET_MAX) v = BUDGET_MAX;
+    setPath(t.dataset.path, v); save(); refreshDerived(t.dataset.path);
+  }
+  if (t.dataset.checkwhy) { S.checks[t.dataset.checkwhy].why = t.value; save(); }
+  if (t.dataset.self) {
+    if (!S.self) S.self = { ...computeDims() };
+    S.self[t.dataset.self] = +t.value; save();
+    $(`[data-out="self${t.dataset.self}"]`).textContent = t.value;
+  }
+  if (t.id === 'fb_to') fbDraft.to = t.value;
+  if (t.id === 'fb_good') { fbDraft.good = t.value; fbHint(); }
+  if (t.id === 'fb_suggest') { fbDraft.suggest = t.value; fbHint(); }
+});
+function updateLoginBtn() { const b = $('[data-act="login"]'); if (b) b.disabled = !(loginDraft.cls && String(loginDraft.no).trim() && loginDraft.name.trim()); }
+document.addEventListener('change', e => {
+  const t = e.target; if (!S) return;
+  if (t.dataset.checkwhy || t.dataset.self) return keepScroll(render);   // 입력을 마치면 상태 표시 갱신
+  if (t.dataset.tier !== undefined) { S.fest.lineup[+t.dataset.tier].fee = TIERS.find(x => x.name === t.value).fee; save(); keepScroll(render); }
+  if (t.dataset.boothkind !== undefined) { S.fest.booths[+t.dataset.boothkind].cost = BOOTH_KINDS.find(x => x.name === t.value).cost; save(); keepScroll(render); }
+  if (t.dataset.manual) { S.manual[t.dataset.manual][+t.dataset.i] = +t.value; save(); keepScroll(render); }
+  if (t.dataset.path === 'fest.budget') keepScroll(render);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.id === 'lg_name' || e.target.id === 'lg_no')) ACTIONS.login(); if (e.key === 'Escape') closeModal(); });
+$('#themeSel').addEventListener('change', e => { PREF.theme = e.target.value; savePref(); applyChrome(); });
+$('#viewToggle').addEventListener('click', () => { PREF.mobile = !PREF.mobile; savePref(); render(); });
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-nav],[data-cls],[data-chip],[data-radio],[data-add],[data-del],[data-act],[data-rate],[data-genre],[data-check],[data-paper],[data-star],[data-play]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.nav) return S ? go(d.nav) : go('home');
+  if (d.cls) { loginDraft.cls = +d.cls; loginDraft.no = $('#lg_no').value; loginDraft.name = $('#lg_name').value; return render(); }
+  if (d.play) return playThumb(t);
+  if (d.act && ACTIONS[d.act]) return ACTIONS[d.act](t, e);
+  if (d.genre) return openModal(genreCard(GENRES.find(g => g.k === d.genre)).replace('class="card gcard" style="margin:0"', 'class="gcard"'));
+  if (!S) return;
+  if (d.rate) {
+    S.input.genres[d.rate] = +d.v; save(); keepScroll(render);
+    if (+d.v < 0) { const g = GENRES.find(x => x.k === d.rate); openModal(`<div class="notice small" style="margin-bottom:10px">❓ 잘 모르는 장르네요! 카드를 읽고 들어본 뒤, 마음에 들면 다시 골라 주세요.</div>` + genreCard(g).replace('class="card gcard" style="margin:0"', 'class="gcard"')); }
+    return;
+  }
+  if (d.chip) { const arr = getPath(d.chip); const k = arr.indexOf(d.val); k >= 0 ? arr.splice(k, 1) : arr.push(d.val); save(); return keepScroll(render); }
+  if (d.radio) { setPath(d.radio, d.val); save(); return keepScroll(render); }
+  if (d.add) { S.fest[d.add].push(ROW_TPL[d.add]()); save(); return keepScroll(render); }
+  if (d.del) { S.fest[d.del].splice(+d.i, 1); save(); return keepScroll(render); }
+  if (d.check) { S.checks[d.check] = Object.assign(S.checks[d.check] || {}, { v: d.v }); save(); keepScroll(render); const w = $(`[data-checkwhy="${d.check}"]`); if (w && d.v !== 'yes') w.focus(); return; }
+  if (d.paper) {
+    const ta = $('textarea[data-path="report.body"]'), frame = PAPERS[d.paper].frame;
+    ta.value = ta.value.replace('[연구 문장 틀 버튼을 눌러 논문과 나를 비교해 보세요]', '').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n\n' + frame;
+    ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
+    const s = ta.value.lastIndexOf('['); ta.setSelectionRange(s, ta.value.indexOf(']', s) + 1);
+    return;
+  }
+  if (d.star) { fbDraft[d.star] = +d.n; return keepScroll(render); }
+});
+function playThumb(t) {
+  const fr = document.createElement('iframe');
+  fr.src = `https://www.youtube-nocookie.com/embed/${t.dataset.play}?autoplay=1`; fr.allow = 'autoplay; encrypted-media; picture-in-picture'; fr.allowFullscreen = true;
+  t.replaceWith(fr);
+}
+
+const ACTIONS = {
+  closeModal,
+  login() {
+    loginDraft.no = ($('#lg_no') || {}).value ?? loginDraft.no; loginDraft.name = ($('#lg_name') || {}).value ?? loginDraft.name;
+    if (!loginDraft.cls) return toast('반을 먼저 골라 주세요.');
+    if (!String(loginDraft.no).trim() || !loginDraft.name.trim()) return toast('번호와 이름을 입력해 주세요.');
+    login(loginDraft.cls, loginDraft.no, loginDraft.name);
+  },
+  continue() { const id = store.get(K_LAST, null); if (USERS[id]) { UID = id; S = USERS[id]; go(S.view || 'input'); } },
+  pick(t) { const u = USERS[t.dataset.id]; if (u && confirm(`${u.student.cls}반 ${u.student.no}번 ${u.student.name} 학생이 맞나요?`)) { UID = t.dataset.id; S = u; store.set(K_LAST, UID); go(S.view || 'input'); } },
+  logout() { if (confirm('나가면 다른 학생이 이 기기를 쓸 수 있어요. 내 기록은 저장돼 있어요. 나갈까요?')) logout(); },
+  sendLink() {
+    const url = appBase() + '#load=' + enc({ student: S.student, input: S.input });
+    const text = `🎧 ${studentTag()}의 음악 취향 과제 — 학교 노트북에서 이 링크를 누르세요`;
+    if (navigator.share) navigator.share({ title: '나의 음악 취향 과제', text, url }).catch(() => {});
+    else copyText(url, '링크를 복사했어요! 카카오톡 나와의 채팅 등에 붙여넣으세요.');
+  },
+  resetSelf() { S.self = null; save(); keepScroll(render); },
+  redraft() { if (confirm('지금 쓴 보고서를 지우고 초안을 다시 만들까요?')) { Object.assign(S.report, draftReport()); save(); keepScroll(render); } },
+  cardModal() {
+    openModal(`<h3>🖼️ 내 취향 카드</h3>${myCardHTML()}<div class="row" style="margin-top:10px"><button class="blue" data-act="saveCard">⬇️ 이미지로 저장</button></div><div class="muted small" style="margin-top:6px">저장한 이미지는 보통 '다운로드' 폴더에 있어요. 패들렛 게시물에 끌어다 놓으면 첨부돼요.</div>`);
+  },
+  saveCard() {
+    if (typeof html2canvas === 'undefined') return toast('이미지 기능을 불러오지 못했어요. 대신 화면을 캡처해 주세요.');
+    const el = $('#mycard');
+    html2canvas(el, { backgroundColor: getComputedStyle(document.body).backgroundColor || '#fff', scale: 2 }).then(cv => {
+      const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = `음악취향카드_${S.student.cls}-${S.student.no}_${S.student.name}.png`; a.click();
+      S.flags.card = true; save(); toast('이미지를 저장했어요! (다운로드 폴더)');
+    });
+  },
+  copySubject() { copyText(subjectLine(), '제목을 복사했어요! 패들렛 제목 칸에 붙여넣기(Ctrl+V)'); },
+  copyBody() {
+    const b = blanks(S.report.intro + S.report.body + S.report.concl).length;
+    if (b && !confirm(`아직 [ 빈칸 ]이 ${b}개 남아 있어요. 그래도 복사할까요?`)) return;
+    copyText(padletBody(), '본문을 복사했어요! 패들렛 본문 칸에 붙여넣기(Ctrl+V)'); S.flags.copied = true; save();
+  },
+  copyDiscovery() { copyText('[NEW DISCOVERY] OO이의 보고서를 읽고 [장르/아티스트/곡명]을 새롭게 알게 되었어. 나도 들어보니 [이유] 때문에 관심이 가!', '댓글 양식을 복사했어요! [ ] 부분은 꼭 내 말로 바꿔요.'); },
+  songsToSetlist() {
+    const songs = S.input.songs.filter(s => s.t.trim());
+    S.fest.setlist = S.fest.setlist.filter(x => x.song.trim() || x.url.trim());
+    songs.forEach(s => { if (!S.fest.setlist.some(x => x.song === s.t)) S.fest.setlist.push({ artist: s.a, song: s.t, url: '' }); });
+    if (!S.fest.setlist.length) S.fest.setlist.push(ROW_TPL.setlist());
+    save(); keepScroll(render); toast('셋리스트에 넣었어요! 유튜브 링크를 붙여넣어 주세요.');
+  },
+  suggestBudget() { S.fest.budget = suggestedBudget(); save(); keepScroll(render); },
+  copyBooth() { copyText(boothUrl(), '청음 링크를 복사했어요!'); },
+  downloadQR() {
+    const img = $('#qrbox img'), cv = $('#qrbox canvas');
+    const src = img && img.src && img.src.startsWith('data:') ? img.src : cv ? cv.toDataURL('image/png') : null;
+    if (!src) return;
+    const a = document.createElement('a'); a.href = src; a.download = `청음QR_${S.fest.name || '축제'}.png`; a.click();
+  },
+  addFeedback() {
+    if (!fbDraft.to.trim()) return toast('피드백 대상을 입력해 주세요.');
+    if (!fbDraft.good.trim() || !fbDraft.suggest.trim()) return toast('좋았던 점과 개선 제안을 모두 써 주세요.');
+    S.feedback.push({ ...fbDraft, at: Date.now() }); fbDraft = { to: '', lineup: 0, plan: 0, poster: 0, listen: 0, good: '', suggest: '' };
+    save(); keepScroll(render); toast('📮 피드백을 남겼어요!');
+  },
+  delFeedback(t) { S.feedback.splice(+t.dataset.i, 1); save(); keepScroll(render); },
+  poster() { openPoster(); },
+  copySummary() { copyText(festSummaryText(), '기획 요약서를 복사했어요!'); },
+  copyEval() {
+    const E = evalAreas(), lines = a => a.map((x, k) => `${k + 1}. ${x.final ? '○' : '×'} ${x.label}`).join('\n');
+    copyText(`[수행평가] ${studentTag()}\n영역1 ${S.absent ? '-' : E.s1}/20\n${lines(E.A1)}\n영역2 ${S.absent ? '-' : E.s2}/20\n${lines(E.A2)}\n총점 ${E.total}/40`, '평가 결과를 복사했어요!');
+  },
+  absent(t) { S.absent = t.checked; save(); keepScroll(render); }
+};
+
+/* ----- A5 포스터 ----- */
+function festSummaryText() {
+  const f = S.fest, b = budgetCalc();
+  return `[축제 기획 요약서] ${f.name}
+슬로건: ${f.slogan}
+유형: ${f.type === 'school' ? '학교 축제' : '취향 맞춤형 축제'} / 일시: ${f.date} / 장소: ${f.venue}
+목적: ${f.purpose.join(', ')} ${f.purposeText}
+라인업: ${f.lineup.filter(l => l.artist).map(l => `${l.tier} ${l.artist}`).join(' / ')}
+타임테이블: ${f.timetable.filter(t => t.act).map(t => `${t.time} ${t.stage} ${t.act}`).join(' / ')}
+셋리스트: ${f.setlist.filter(s => s.song).map(s => `${s.artist} - ${s.song}`).join(' / ')}
+부스: ${f.booths.filter(x => x.name).map(x => `${x.kind} ${x.name}`).join(' / ')}
+예산: 배정 ${won(b.budget)} · 집행 ${won(b.spent)} (${b.parts.map(p => `${p[0]} ${won(p[1])}`).join(', ')})
+관람 안내: ${f.guide}
+세부 설명: ${f.detail}`;
+}
+function openPoster() {
+  const f = S.fest, by = n => f.lineup.filter(l => l.tier === n && l.artist.trim()).map(l => esc(l.artist));
+  const heads = [...by('헤드라이너'), ...by('첫 내한/쇼케이스')], subs = by('서브 헤드라이너'), rest = [...by('미들 라인업'), ...by('언더카드'), ...by('루키')];
+  const colors = ['#ff4fa3', '#3d5afe', '#00c389', '#ffb400', '#9b5cff'];
+  const blobs = [0, 1, 2].map(k => `<div class="blob" style="width:${60 + k * 25}mm;height:${60 + k * 25}mm;background:${colors[(k + f.name.length) % 5]};${['top:-20mm;right:-20mm', 'bottom:30mm;left:-30mm', 'bottom:-40mm;right:-10mm'][k]}"></div>`).join('');
+  $('#posterWrap').innerHTML = `<div class="row no-print" style="justify-content:center;margin-bottom:14px"><button class="primary" id="pPrint">🖨️ 인쇄 / PDF 저장 (A5)</button><button id="pClose">닫기</button></div>
+    <div class="poster">${blobs}
+      <div class="pd">${f.type === 'school' ? 'SCHOOL MUSIC FESTIVAL' : 'MUSIC FESTIVAL'}</div><div class="pt">${esc(f.name || '축제명')}</div><div class="ps">${esc(f.slogan)}</div>
+      <div class="pd">📅 ${esc(f.date)}<br>📍 ${esc(f.venue)}</div>
+      <div style="margin-top:4mm">${heads.length ? `<div class="head">${heads.join(' · ')}</div>` : ''}${subs.length ? `<div class="sub">${subs.join(' · ')}</div>` : ''}${rest.length ? `<div class="rest">${rest.join(' · ')}</div>` : ''}</div>
+      <div class="tt">${f.timetable.filter(t => t.act.trim()).slice(0, 6).map(t => `${esc(t.time)} ${esc(t.stage)} ${esc(t.act)}`).join('<br>')}</div>
+      <div class="tt">${f.booths.filter(b => b.name.trim()).slice(0, 4).map(b => `◆ ${esc(b.name)}`).join('  ')}</div>
+      <div class="foot"><div class="tt" style="max-width:85mm">${esc(f.guide.slice(0, 160))}</div><div><div class="pqr" id="posterQR"></div><div class="pd" style="text-align:center;font-size:9px;margin-top:2px">SCAN · 셋리스트 청음</div></div></div>
+    </div>`;
+  $('#posterWrap').classList.add('show');
+  const url = boothUrl();
+  if (url && typeof QRCode !== 'undefined') { try { new QRCode($('#posterQR'), { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L }); } catch (e) {} } else $('#posterQR').style.display = 'none';
+  $('#pClose').onclick = () => $('#posterWrap').classList.remove('show');
+  $('#pPrint').onclick = () => { document.body.classList.add('printing'); window.print(); };
+  S.booth.posterMade = true; save();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+
+/* ----- QR로 접속한 청음 페이지 ----- */
+function renderBoothOnly(p) {
+  document.documentElement.dataset.theme = PREF.theme;
+  document.body.innerHTML = `<div class="solo"><div class="card hero"><div class="small" style="font-weight:900;letter-spacing:2px">DIGITAL LISTENING BOOTH</div><h1>${esc(p.n || '뮤직 페스티벌')}</h1><div>${esc(p.s || '')}</div><div class="small" style="margin-top:6px">${esc([p.d, p.v].filter(Boolean).join(' · '))}</div></div>
+    <div class="card"><h3>🎶 셋리스트</h3>${tracksHTML(p.t || [])}</div><div class="card muted small">청음 후 부스의 피드백 포스트잇에 좋았던 점과 개선 제안을 남겨 주세요! 🎪</div></div>`;
+  document.body.addEventListener('click', e => { const t = e.target.closest('[data-play]'); if (t) playThumb(t); });
+}
+
+/* =========================================================
+   8. 시작
+   ========================================================= */
+(function boot() {
+  const h = location.hash;
+  if (h.startsWith('#booth=')) { try { return renderBoothOnly(dec(h.slice(7))); } catch (e) {} }
+  if (h.startsWith('#load=')) {
+    try {
+      const d = dec(h.slice(6)), st = d.student;
+      history.replaceState(null, '', appBase());
+      if (st && d.input && confirm(`📥 ${st.cls}반 ${st.no}번 ${st.name} 학생의 과제를 이 기기로 불러올까요?`)) {
+        const id = uidOf(st.cls, st.no, st.name);
+        if (!USERS[id]) USERS[id] = newUser(st.cls, st.no, st.name);
+        USERS[id].input = Object.assign(newUser(1, '', '').input, d.input);
+        UID = id; S = USERS[id]; store.set(K_LAST, id); store.set(K_USERS, USERS);
+        toast('과제를 불러왔어요! 결과를 확인해 보세요.');
+        return go('result');
+      }
+    } catch (e) { toast('링크가 손상되어 불러오지 못했어요.'); }
+  }
+  render();
+})();
+</script>
+</body>
+</html>
