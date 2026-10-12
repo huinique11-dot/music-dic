@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뮤직 페스티벌 랩 - 음악 취향 데이터 기반 축제 기획</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<!-- QR 코드 생성 / 프로필 카드 이미지 저장용 라이브러리 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ===== 테마 토큰 ===== */
+:root, [data-theme="neo"] {
+  --bg: #fff1c9; --bg2: #fff1c9; --panel: #ffffff; --panel2: #fffaf0; --ink: #111111; --muted: #555;
+  --accent: #ff4fa3; --accent2: #3d5afe; --accent3: #00c389; --warn: #ff5a1f;
+  --line: #111; --bw: 3px; --shadow: 5px 5px 0 #111; --radius: 10px; --blur: none;
+  --chip: #ffffff; --chip-on: #111; --chip-on-ink: #fff; --mark: #fff36b;
+}
+[data-theme="y2k"] {
+  --bg: #e9d8ff; --bg2: linear-gradient(135deg,#ffd6f5 0%,#d6e4ff 45%,#c9fff2 100%);
+  --panel: rgba(255,255,255,.55); --panel2: rgba(255,255,255,.35); --ink: #2a1a4a; --muted: #6a5a8a;
+  --accent: #b44dff; --accent2: #4d7cff; --accent3: #00b3a4; --warn: #ff3d7f;
+  --line: rgba(255,255,255,.9); --bw: 1.5px; --shadow: 0 8px 30px rgba(120,60,200,.18); --radius: 22px; --blur: blur(14px);
+  --chip: rgba(255,255,255,.6); --chip-on: linear-gradient(135deg,#b44dff,#4d7cff); --chip-on-ink: #fff; --mark: #ffe0fb;
+}
+[data-theme="dark"] {
+  --bg: #0e0f1d; --bg2: #0e0f1d; --panel: #1a1c31; --panel2: #23264a; --ink: #f1f1f8; --muted: #a2a5c4;
+  --accent: #ff5fb0; --accent2: #7d8cff; --accent3: #2ee6a6; --warn: #ff8a4c;
+  --line: #3b3f6b; --bw: 2px; --shadow: 4px 4px 0 #000; --radius: 12px; --blur: none;
+  --chip: #23264a; --chip-on: #ff5fb0; --chip-on-ink: #111; --mark: #5b3a73;
+}
+[data-theme="light"] {
+  --bg: #f4f5fa; --bg2: #f4f5fa; --panel: #ffffff; --panel2: #f8f9fd; --ink: #1b1d29; --muted: #6b6f85;
+  --accent: #e8338a; --accent2: #3d5afe; --accent3: #00a676; --warn: #e85a1f;
+  --line: #e1e3ee; --bw: 1px; --shadow: 0 4px 16px rgba(20,20,60,.07); --radius: 14px; --blur: none;
+  --chip: #ffffff; --chip-on: #1b1d29; --chip-on-ink: #fff; --mark: #ffef9e;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg); background-image: var(--bg2); background-attachment: fixed;
+  color: var(--ink); min-height: 100vh; padding: 16px;
+}
+h1, h2, h3, .display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; letter-spacing: .3px; }
+h2 { font-size: 26px; margin: 0 0 6px; }
+h3 { font-size: 19px; margin: 0 0 10px; }
+p { line-height: 1.65; }
+a { color: var(--accent2); }
+mark.user { background: var(--mark); color: inherit; padding: 0 3px; border-radius: 4px; font-weight: 700; }
+
+/* ===== 무대(16:9 / 9:16) 프레임 ===== */
+.stage {
+  margin: 0 auto; width: 100%; max-width: 1400px; aspect-ratio: 16 / 9; min-height: 640px;
+  display: flex; flex-direction: column; overflow: hidden;
+  border: var(--bw) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  background: var(--panel2); backdrop-filter: var(--blur);
+}
+body.mobile .stage { max-width: 430px; aspect-ratio: 9 / 16; min-height: 0; }
+@media (max-width: 820px) {
+  body { padding: 0; }
+  .stage { aspect-ratio: auto; min-height: 100vh; border-radius: 0; border: 0; max-width: none; }
+  body.mobile .stage { max-width: none; aspect-ratio: auto; }
+}
+.topbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px;
+  border-bottom: var(--bw) solid var(--line); background: var(--panel); backdrop-filter: var(--blur);
+}
+.brand { font-family: 'Black Han Sans'; font-size: 20px; white-space: nowrap; }
+.brand span { color: var(--accent); }
+.nav { display: flex; gap: 6px; flex: 1; overflow-x: auto; padding: 2px; }
+.nav button { white-space: nowrap; flex: none; }
+body.mobile .brand { flex-basis: 100%; }
+body.mobile .nav { order: 3; flex-basis: 100%; }
+.nav button { font-size: 13px; padding: 6px 10px; }
+.nav button.on { background: var(--chip-on); color: var(--chip-on-ink); }
+.tools { display: flex; gap: 6px; align-items: center; }
+.view { flex: 1; overflow: auto; padding: 20px; }
+body.mobile .nav button .lbl { display: none; }
+body.mobile .view { padding: 14px; }
+
+/* ===== 공통 컴포넌트 ===== */
+button, .btn {
+  font: inherit; font-weight: 700; cursor: pointer; color: var(--ink);
+  background: var(--panel); border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .7);
+  padding: 8px 14px; box-shadow: none; transition: transform .08s, box-shadow .08s;
+}
+button:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 var(--line); }
+[data-theme="y2k"] button:hover { box-shadow: 0 4px 14px rgba(120,60,200,.25); }
+button.primary { background: var(--accent); color: #fff; }
+button.blue { background: var(--accent2); color: #fff; }
+button.green { background: var(--accent3); color: #111; }
+button.ghost { background: transparent; }
+button.sm { padding: 4px 10px; font-size: 12px; }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.card {
+  background: var(--panel); border: var(--bw) solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 18px; backdrop-filter: var(--blur);
+}
+.card + .card { margin-top: 16px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g-side { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
+body.mobile .g2, body.mobile .g3, body.mobile .g-side { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .g2, .g3, .g-side { grid-template-columns: 1fr; } }
+.sticky { position: sticky; top: 0; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.muted { color: var(--muted); font-size: 13px; }
+.small { font-size: 12px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--panel2); }
+.tag.pink { background: var(--accent); color: #fff; border-color: transparent; }
+.tag.blue { background: var(--accent2); color: #fff; border-color: transparent; }
+.tag.green { background: var(--accent3); color: #111; border-color: transparent; }
+.step-no { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: var(--panel); font-family: 'Black Han Sans'; margin-right: 8px; }
+[data-theme="y2k"] .step-no { background: var(--accent); color: #fff; }
+
+input[type=text], input[type=number], input[type=url], input:not([type]), textarea, select {
+  font: inherit; color: var(--ink); width: 100%; padding: 9px 11px;
+  background: var(--panel2); border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .6);
+}
+textarea { min-height: 90px; resize: vertical; line-height: 1.6; }
+input:focus, textarea:focus, select:focus { outline: 3px solid var(--accent); outline-offset: 1px; }
+label.f { display: block; font-weight: 700; font-size: 13px; margin: 12px 0 5px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 99px;
+  background: var(--chip); border: var(--bw) solid var(--line);
+}
+.chip.on { background: var(--chip-on); color: var(--chip-on-ink); font-weight: 700; }
+.chip.on::before { content: '✓ '; }
+
+table.rows { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.rows th { text-align: left; font-size: 12px; color: var(--muted); padding: 4px; }
+table.rows td { padding: 4px; vertical-align: top; }
+table.rows input, table.rows select { padding: 6px 8px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 99;
+  background: var(--ink); color: var(--panel); padding: 10px 18px; border-radius: 99px; font-weight: 700;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.toast.show { opacity: 1; }
+.notice { border: 2px dashed var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--panel2); font-size: 13px; line-height: 1.6; }
+.warn { color: var(--warn); font-weight: 700; }
+.ok { color: var(--accent3); font-weight: 700; }
+
+/* ===== 홈 ===== */
+.hero { padding: 26px; background: var(--accent); color: #fff; }
+[data-theme="y2k"] .hero { background: linear-gradient(120deg,#b44dff,#4d7cff 60%,#00d4c0); }
+.hero h1 { font-size: 40px; margin: 0 0 6px; line-height: 1.15; }
+.quote { font-size: 15px; line-height: 1.85; border-left: 6px solid var(--accent); padding: 4px 0 4px 16px; margin: 0; }
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+body.mobile .flow { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; } }
+.flow .card { cursor: pointer; margin: 0; }
+.flow .card:hover { transform: translate(-2px,-2px); }
+
+/* ===== 장바구니 ===== */
+.shop-sec h3 { display: flex; align-items: center; }
+.shop-sec .no { font-family: 'Black Han Sans'; color: var(--accent); margin-right: 8px; font-size: 22px; }
+.cart-list { list-style: none; padding: 0; margin: 8px 0; font-size: 13px; max-height: 340px; overflow: auto; }
+.cart-list li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.cart-total { font-family: 'Black Han Sans'; font-size: 22px; }
+
+/* ===== 인스타 프로필 카드 ===== */
+.igcard {
+  background: var(--panel); border: var(--bw) solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden; display: grid; grid-template-columns: 380px 1fr; aspect-ratio: 16/9;
+  max-width: 1100px; margin: 0 auto;
+}
+.igcard.vertical { grid-template-columns: 1fr; aspect-ratio: auto; max-width: 400px; }
+.ig-left { padding: 22px; border-right: var(--bw) solid var(--line); display: flex; flex-direction: column; gap: 12px; background: var(--panel2); }
+.igcard.vertical .ig-left { border-right: 0; border-bottom: var(--bw) solid var(--line); }
+.ig-right { padding: 20px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+.ig-head { display: flex; align-items: center; gap: 16px; }
+.ig-avatar {
+  width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; font-size: 42px; flex: none;
+  background: var(--panel); border: 4px solid transparent;
+  background-image: linear-gradient(var(--panel),var(--panel)), conic-gradient(#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5,#feda75);
+  background-origin: border-box; background-clip: padding-box, border-box;
+}
+.ig-stats { display: flex; gap: 14px; text-align: center; flex: 1; justify-content: space-around; }
+.ig-stats b { display: block; font-size: 20px; }
+.ig-stats span { font-size: 11px; color: var(--muted); }
+.ig-name { font-weight: 900; font-size: 15px; }
+.ig-name .v { color: #3897f0; }
+.ig-title { font-family: 'Black Han Sans'; font-size: 24px; line-height: 1.25; }
+.ig-label { font-size: 11px; font-weight: 900; letter-spacing: 1.5px; color: var(--accent); }
+.ig-tags { color: var(--accent2); font-size: 13px; font-weight: 700; line-height: 1.7; }
+.ig-hl { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.ig-hl div { text-align: center; font-size: 11px; flex: none; width: 58px; }
+.ig-hl i { display: grid; place-items: center; width: 52px; height: 52px; margin: 0 auto 4px; border-radius: 50%; border: 2px solid var(--line); font-style: normal; font-size: 22px; background: var(--panel); }
+.ig-story { font-size: 14px; line-height: 1.8; }
+.consume { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.igcard.vertical .consume { grid-template-columns: 1fr 1fr; }
+@media (max-width: 900px) { .igcard { grid-template-columns: 1fr; aspect-ratio: auto; } .ig-left { border-right: 0; border-bottom: var(--bw) solid var(--line); } .consume { grid-template-columns: 1fr 1fr; } }
+.cs { border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .7); padding: 10px; background: var(--panel2); font-size: 12px; }
+.cs b { font-size: 13px; display: block; margin-bottom: 4px; }
+.meter { height: 8px; border-radius: 99px; background: var(--line); opacity: .9; overflow: hidden; margin: 6px 0; }
+[data-theme="neo"] .meter, [data-theme="light"] .meter { background: #e8e8e8; }
+.meter > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+
+/* ===== 보드 ===== */
+.board { columns: 3 280px; column-gap: 14px; }
+body.mobile .board { columns: 1; }
+.post { break-inside: avoid; margin-bottom: 14px; }
+.post .sec { font-size: 13px; line-height: 1.65; margin: 6px 0; white-space: pre-wrap; }
+.post .sec b { color: var(--accent); }
+.cmt { font-size: 12px; padding: 7px 9px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); margin-top: 6px; line-height: 1.55; }
+.cmt.disc { border: 2px solid var(--accent3); }
+.trend { border-left: 6px solid var(--accent2); padding: 10px 12px; background: var(--panel2); border-radius: 6px; margin-bottom: 10px; font-size: 13px; line-height: 1.6; }
+.trend.hot { border-left-color: var(--accent); }
+.frames { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.frames button { font-size: 11px; font-weight: 500; padding: 3px 8px; }
+
+/* ===== 축제 / 예산 ===== */
+.type-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.type-pick button { text-align: left; padding: 14px; }
+.type-pick button.on { background: var(--chip-on); color: var(--chip-on-ink); }
+.bar { display: flex; height: 26px; border: var(--bw) solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); }
+.bar i { display: block; height: 100%; }
+.legend { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; font-size: 12px; margin-top: 8px; align-items: center; }
+.legend s { display: inline-block; width: 11px; height: 11px; border-radius: 3px; text-decoration: none; }
+.big-num { font-family: 'Black Han Sans'; font-size: 28px; }
+.checklist { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.checklist li { padding: 4px 0; }
+.glossary { font-size: 12px; line-height: 1.7; }
+.glossary b { color: var(--accent); }
+
+/* ===== 청음 부스 ===== */
+.tracks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.track { border: var(--bw) solid var(--line); border-radius: calc(var(--radius) * .8); overflow: hidden; background: var(--panel); }
+.track .thumb { aspect-ratio: 16/9; background: #222 center/cover no-repeat; display: grid; place-items: center; color: #fff; font-size: 30px; cursor: pointer; position: relative; }
+.track .thumb::after { content: '▶'; position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,0,0,.88); display: grid; place-items: center; font-size: 18px; }
+.track iframe { width: 100%; aspect-ratio: 16/9; border: 0; display: block; }
+.track .meta { padding: 8px 10px; font-size: 13px; }
+.qrbox { display: grid; place-items: center; padding: 14px; background: #fff; border-radius: 10px; border: var(--bw) solid var(--line); }
+.qrbox img, .qrbox canvas { max-width: 100%; }
+.stars button { padding: 0 3px; border: 0; background: transparent; font-size: 22px; box-shadow: none; color: #c9c9c9; }
+.stars button.on { color: #ffb400; }
+.stars button:hover { transform: scale(1.15); box-shadow: none; }
+
+/* ===== 평가 ===== */
+.rubric td, .rubric th { border-bottom: 1px dashed var(--line); padding: 8px 6px; font-size: 13px; vertical-align: top; }
+.rubric { width: 100%; border-collapse: collapse; }
+.score { font-family: 'Black Han Sans'; font-size: 44px; line-height: 1; }
+
+/* ===== A5 포스터 ===== */
+#posterWrap { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; display: none; overflow: auto; padding: 24px; }
+#posterWrap.show { display: block; }
+.poster {
+  width: 148mm; height: 210mm; margin: 0 auto; background: #111; color: #fff; position: relative; overflow: hidden;
+  padding: 12mm 10mm; display: flex; flex-direction: column; gap: 4mm; font-family: 'Noto Sans KR';
+}
+.poster .pt { font-family: 'Black Han Sans'; font-size: 40px; line-height: 1.05; color: #fff36b; word-break: keep-all; }
+.poster .ps { font-size: 15px; font-weight: 700; }
+.poster .pd { font-size: 12px; opacity: .85; }
+.poster .head { font-family: 'Black Han Sans'; font-size: 30px; line-height: 1.1; }
+.poster .sub { font-family: 'Black Han Sans'; font-size: 20px; color: #ff9bd2; }
+.poster .rest { font-size: 13px; opacity: .9; }
+.poster .foot { margin-top: auto; display: flex; gap: 10px; align-items: flex-end; justify-content: space-between; }
+.poster .pqr { background: #fff; padding: 6px; width: 34mm; height: 34mm; }
+.poster .pqr img, .poster .pqr canvas { width: 100%; height: 100%; }
+.poster .tt { font-size: 10.5px; line-height: 1.6; opacity: .9; }
+.poster .blob { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .55; z-index: 0; }
+.poster > *:not(.blob) { position: relative; z-index: 1; }
+@media print {
+  @page { size: A5 portrait; margin: 0; }
+  body.printing { padding: 0; background: #fff; }
+  body.printing .stage, body.printing .no-print, body.printing .toast { display: none !important; }
+  body.printing #posterWrap { position: static; display: block; background: none; padding: 0; }
+  body.printing .poster { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ===== 청음 페이지 단독 모드 (QR 접속) ===== */
+.booth-only { max-width: 760px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <header class="topbar">
+    <div class="brand">🎪 MUSIC <span>FESTIVAL</span> LAB</div>
+    <nav class="nav" id="nav"></nav>
+    <div class="tools">
+      <select id="themeSel" title="테마 변경" style="width:auto;padding:6px 8px;font-size:13px">
+        <option value="neo">🟨 네오브루탈</option>
+        <option value="y2k">🫧 Y2K 글래스</option>
+        <option value="dark">🌙 다크</option>
+        <option value="light">☀️ 라이트</option>
+      </select>
+      <button class="sm" id="viewToggle" title="화면 비율 전환">📱 모바일 세로(9:16)</button>
+    </div>
+  </header>
+  <main class="view" id="view"></main>
+</div>
+
+<div id="posterWrap"></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<script>
+/* =========================================================
+   0. 기본 데이터 (선택지 · 산업 트렌드 · 가상 단가)
+   ========================================================= */
+const OPTIONS = {
+  apps: ['유튜브 뮤직', '멜론', '스포티파이', '지니', '애플뮤직', '바이브', '플로', '유튜브(일반 영상)', '사운드클라우드'],
+  places: ['등하굣길', '학원 가는 길', '공부할 때', '운동할 때', '잠들기 전', '샤워할 때', '게임할 때', '혼자 있을 때', '친구들과 함께'],
+  times: ['아침', '낮', '저녁', '새벽'],
+  genres: ['K-Pop', '밴드/록', '힙합', 'R&B', 'J-Pop', 'EDM', '발라드', '인디/어쿠스틱', 'OST', '팝송', '시티팝', '로파이', '재즈', '클래식', '트로트', '국악/퓨전국악'],
+  bpm: ['빠름 (신나는 120BPM 이상)', '중간 (걸음 속도)', '느림 (잔잔한 90BPM 이하)', '상관없음'],
+  textures: ['허스키한 보컬', '맑고 청량한 보컬', '몽환적인 사운드', '묵직한 베이스', '날것의 밴드 사운드', '미니멀/로파이', '웅장한 오케스트라', '레트로 신스', '어쿠스틱 기타', '중독성 있는 후렴'],
+  concert: ['콘서트 관람 경험 있음', '페스티벌 가봤음', '팬미팅/쇼케이스', '버스킹 즐겨 봄', '학교 축제 공연', '아직 없지만 꼭 가고 싶음', '온라인 콘서트 시청'],
+  goods: ['포토카드', '슬로건', '응원봉', '의류/MD', '실물 앨범', 'LP/CD', '키링/문구', '구매 안 함'],
+  content: ['숏폼 챌린지 시청', '숏폼 챌린지 제작', '플레이리스트 만들기', '직캠 시청', '뮤직비디오 반복 시청', '악기 연주/커버', '노래 커버', '덕질/리뷰 계정 운영', '라이브 방송 시청']
+};
+
+const GENRE_EMOJI = { 'K-Pop': '💜', '밴드/록': '🎸', '힙합': '🎤', 'R&B': '🫶', 'J-Pop': '🌸', 'EDM': '⚡', '발라드': '🌙', '인디/어쿠스틱': '🍃', 'OST': '🎬', '팝송': '🌎', '시티팝': '🌆', '로파이': '📼', '재즈': '🎷', '클래식': '🎻', '트로트': '🕺', '국악/퓨전국악': '🥁' };
+
+// 페르소나 축: 명사(칭호) + 형용사 + 대표 이모지
+const AXES = {
+  energy:   { noun: '에너지 부스터', adj: '심박수 올리는', emoji: '⚡' },
+  mood:     { noun: '감성 큐레이터', adj: '잔잔한 무드의', emoji: '🌙' },
+  fandom:   { noun: '팬덤 리더', adj: '응원봉 든', emoji: '💖' },
+  live:     { noun: '라이브 현장러', adj: '무대 앞자리', emoji: '🎸' },
+  creator:  { noun: '뮤직 크리에이터', adj: '플리 장인', emoji: '🎧' },
+  explorer: { noun: '장르 탐험가', adj: '취향 경계 없는', emoji: '🧭' }
+};
+
+// 1차시 산업 분석 위젯 (교사 팁 3종 + 확장 2종). 최신 수치는 KOCCA 음악산업백서에서 확인하도록 안내.
+const TRENDS = [
+  { id: 'algo', axes: ['creator', 'explorer', 'mood'], title: '① 알고리즘 추천 & 숏폼 음악 발견',
+    text: '스트리밍 앱의 개인 맞춤 추천과 릴스·쇼츠 챌린지가 신곡을 처음 만나는 주요 통로가 되었어요. 노래의 "하이라이트 15초"가 흥행을 좌우하기도 해요.',
+    keys: ['알고리즘', '스트리밍', '숏폼', '챌린지', '플랫폼'] },
+  { id: 'exp', axes: ['fandom'], title: '② 실물 음반 → 공연·굿즈·경험 소비',
+    text: '음악을 "소유"하기보다 콘서트, 팝업스토어, 응원봉·포토카드 같은 굿즈로 "경험하고 표현"하는 소비가 커지고 있어요. 팬덤 플랫폼에서 소통까지 하죠.',
+    keys: ['굿즈', '팬덤', '경험', '공연', '음반'] },
+  { id: 'band', axes: ['live', 'energy'], title: '③ K-밴드 붐 & 오프라인 라이브 성장',
+    text: '밴드 음악과 페스티벌·라이브 공연 시장이 빠르게 성장하고 있어요. 영화관보다 공연 티켓에 더 많은 돈을 쓰는 시대, 현장의 "떼창"이 곧 콘텐츠가 됩니다.',
+    keys: ['밴드', '페스티벌', '라이브', '공연', '티켓'] },
+  { id: 'global', axes: ['fandom', 'explorer'], title: '④ 글로벌 팬덤 & 내한·쇼케이스',
+    text: 'K-Pop의 해외 진출과 J-Pop·팝 아티스트의 내한 공연이 활발해요. 첫 내한, 쇼케이스 같은 "처음"의 경험이 강력한 티켓 파워가 됩니다.',
+    keys: ['글로벌', '내한', '해외', '팬덤', '쇼케이스'] },
+  { id: 'creator', axes: ['creator'], title: '⑤ 듣는 사람에서 만드는 사람으로',
+    text: '플레이리스트 큐레이션, 커버 영상, 리뷰 계정처럼 팬이 직접 콘텐츠를 생산하며 음악을 퍼뜨리는 "참여형 소비"가 늘고 있어요.',
+    keys: ['커버', '플레이리스트', '크리에이터', '참여', '콘텐츠'] }
+];
+
+const SENTENCE_FRAMES = {
+  intro: ['나는 주로 [장르] 음악을 [상황]에 듣는다.', '내가 좋아하는 음악은 [BPM/템포]가 [빠르고/느리고], [음색] 특징이 있다.', '나 사용설명서 분석 결과 나의 페르소나는 "[칭호]"이다.', '내가 무한 반복하는 곡은 [곡명]인데, 그 이유는 [감정/가사] 때문이다.'],
+  body: ['내 취향과 관련된 음악 산업의 특징은 [유통 플랫폼/팬덤/공연 시장]이다.', '나는 [앱 이름]의 추천 알고리즘으로 새로운 곡을 발견한다. 이것은 스트리밍 플랫폼이 ...', '[아티스트]의 팬덤은 [굿즈/응원 문화]를 통해 ...', '최근 [밴드/페스티벌] 공연 시장이 커지는 이유는 ...'],
+  concl: ['앞으로 음악 시장은 [방향]으로 바뀌어야 한다고 생각한다.', '나와 비슷한 취향의 친구에게 [곡/아티스트]를 추천한다. 왜냐하면 ...', '음악 플랫폼에 [기능]이 생기면 좋겠다.']
+};
+
+const TIERS = [
+  { name: '헤드라이너', fee: 1500000, desc: '축제의 가장 마지막·가장 큰 무대를 책임지는 간판 아티스트' },
+  { name: '서브 헤드라이너', fee: 800000, desc: '헤드라이너 바로 앞, 분위기를 최고조로 끌어올리는 팀' },
+  { name: '미들 라인업', fee: 400000, desc: '축제의 허리. 장르 다양성을 채우는 탄탄한 팀' },
+  { name: '언더카드', fee: 200000, desc: '이른 시간대 무대를 여는 팀. 신선한 발견의 즐거움' },
+  { name: '루키', fee: 100000, desc: '데뷔 초 신인 또는 학생 공연팀' },
+  { name: '첫 내한/쇼케이스', fee: 1000000, desc: '국내 첫 공연·신곡 최초 공개 등 화제성 있는 특별 무대' }
+];
+const BOOTH_KINDS = [{ name: '체험 부스', cost: 300000 }, { name: '전시 부스', cost: 200000 }, { name: 'F&B(먹거리) 부스', cost: 250000 }, { name: '굿즈/MD 부스', cost: 200000 }];
+const BUDGET_MAX = 7000000, SOUND_MAX = 2600000, LIGHT_MAX = 400000;
+
+const SAMPLE_POSTS = [
+  { id: 'sample1', sample: true, author: '예시 학생 A', persona: '새벽 감성 큐레이터',
+    intro: '나는 잔잔한 R&B와 인디 음악을 잠들기 전에 듣는다. 느린 BPM과 허스키한 보컬을 좋아한다.',
+    body: '스트리밍 앱의 알고리즘 추천으로 비슷한 분위기의 곡을 많이 발견했다. 숏폼에서 짧게 들은 곡을 찾아 플레이리스트에 담는 경우도 많다.',
+    concl: '플랫폼이 "상황별 추천"을 더 섬세하게 해주면 좋겠다. 친구들에게 새벽에 듣기 좋은 인디 곡을 추천한다.', comments: [] },
+  { id: 'sample2', sample: true, author: '예시 학생 B', persona: '응원봉 든 라이브 현장러',
+    intro: '나는 K-Pop과 밴드 음악을 좋아하고 빠른 BPM의 신나는 곡을 등하굣길에 듣는다.',
+    body: '공연 티켓과 응원봉, 포토카드를 사는 데 용돈을 쓴다. 실물 음반보다 공연 같은 경험 소비가 늘어나는 흐름과 연결된다.',
+    concl: '학생도 갈 수 있는 저렴한 공연이 더 많아지면 좋겠다. 밴드 붐을 이끄는 팀의 라이브 영상을 추천한다.', comments: [] }
+];
+
+/* =========================================================
+   1. 상태 관리 (localStorage)
+   ========================================================= */
+const KEY = 'musicFestivalLab.v1';
+function defaultState() {
+  return {
+    theme: 'neo', mobile: false, view: 'home',
+    student: { name: '', cls: '' },
+    cart: { apps: [], places: [], times: [], genres: [], bpm: '', textures: [], concert: [], goods: [], content: [], artists: '', songs: '', story: '' },
+    profile: null,
+    report: { intro: '', body: '', concl: '', postId: null },
+    board: SAMPLE_POSTS.map(p => JSON.parse(JSON.stringify(p))),
+    fest: {
+      type: 'school', name: '', slogan: '', date: '', venue: '', purpose: [], purposeText: '',
+      lineup: [{ tier: '헤드라이너', artist: '', fee: 1500000 }, { tier: '서브 헤드라이너', artist: '', fee: 800000 }, { tier: '루키', artist: '', fee: 100000 }],
+      timetable: [{ time: '', stage: '', act: '' }],
+      setlist: [{ artist: '', song: '', url: '' }],
+      booths: [{ kind: '체험 부스', name: '', cost: 300000 }],
+      guide: '', detail: '',
+      budget: 0, sound: 0, light: 0, promo: 0, etc: 0
+    },
+    booth: { qrMode: 'yt', qrMade: false, posterMade: false },
+    feedback: [],
+    manual: { a1: [0, 0, 0, 0], a2: [0, 0, 0, 0] }, // 0=자동, 1=인정, -1=미인정
+    absent: false
+  };
+}
+function loadState() {
+  const d = defaultState();
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return d;
+    const s = JSON.parse(raw);
+    for (const k of Object.keys(d)) {
+      if (s[k] === undefined) continue;
+      d[k] = (d[k] && typeof d[k] === 'object' && !Array.isArray(d[k]) && s[k] && typeof s[k] === 'object') ? Object.assign(d[k], s[k]) : s[k];
+    }
+  } catch (e) { /* 저장소 사용 불가 시 기본값 */ }
+  return d;
+}
+let S = loadState();
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }, 200);
+}
+
+/* =========================================================
+   2. 유틸
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => (Math.round(Number(n) || 0)).toLocaleString('ko-KR') + '원';
+const num = v => Math.max(0, Number(String(v).replace(/[^\d.]/g, '')) || 0);
+const splitList = s => String(s || '').split(/[,\n、·]+/).map(x => x.trim()).filter(Boolean);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const me = () => S.student.name.trim() || '나';
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1900); }
+function getPath(path) { return path.split('.').reduce((o, k) => (o == null ? o : o[k]), S); }
+function setPath(path, val) {
+  const ks = path.split('.'); const last = ks.pop();
+  const o = ks.reduce((o, k) => o[k], S); o[last] = val;
+}
+function ytId(url) { const m = String(url || '').match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(url).trim()) ? String(url).trim() : null); }
+function copyText(text, msg = '복사되었어요!') {
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast(msg)).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast(msg); } catch (e) { toast('복사에 실패했어요. 직접 선택해 복사해 주세요.'); }
+    ta.remove();
+  });
+}
+function chips(path, list) {
+  const cur = getPath(path);
+  return `<div class="chips">${list.map(v => `<button type="button" class="chip ${cur.includes(v) ? 'on' : ''}" data-chip="${path}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
+}
+function radios(path, list) {
+  const cur = getPath(path);
+  return `<div class="chips">${list.map(v => `<button type="button" class="chip ${cur === v ? 'on' : ''}" data-radio="${path}" data-val="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
+}
+const field = (path, ph = '', type = 'text') => `<input type="${type}" data-path="${path}" value="${esc(getPath(path))}" placeholder="${esc(ph)}">`;
+const area = (path, ph = '', rows = 4) => `<textarea data-path="${path}" rows="${rows}" placeholder="${esc(ph)}">${esc(getPath(path))}</textarea>`;
+
+/* =========================================================
+   3. AI 분석 엔진 (나 사용설명서)
+   - 규칙 기반으로 페르소나를 계산하고, 학생이 쓴 원문은 그대로 인용/강조합니다.
+   ========================================================= */
+function analyze(c) {
+  const has = (arr, ...vals) => vals.filter(v => arr.includes(v)).length;
+  const fast = c.bpm.startsWith('빠름'), slow = c.bpm.startsWith('느림');
+  const sc = {
+    energy: has(c.genres, 'EDM', '힙합', '밴드/록', 'K-Pop') * 2 + (fast ? 3 : 0) + has(c.places, '운동할 때', '게임할 때') + has(c.textures, '묵직한 베이스', '중독성 있는 후렴'),
+    mood: has(c.genres, 'R&B', '발라드', '인디/어쿠스틱', '로파이', '재즈', '시티팝', 'OST') * 2 + (slow ? 3 : 0) + has(c.times, '새벽') * 2 + has(c.places, '잠들기 전', '혼자 있을 때', '공부할 때') + has(c.textures, '몽환적인 사운드', '허스키한 보컬', '미니멀/로파이', '어쿠스틱 기타'),
+    fandom: c.goods.filter(g => g !== '구매 안 함').length * 2 + has(c.concert, '팬미팅/쇼케이스', '콘서트 관람 경험 있음') + has(c.content, '직캠 시청', '뮤직비디오 반복 시청', '라이브 방송 시청') + has(c.genres, 'K-Pop', 'J-Pop'),
+    live: has(c.concert, '콘서트 관람 경험 있음', '페스티벌 가봤음', '버스킹 즐겨 봄', '학교 축제 공연') * 2 + has(c.genres, '밴드/록') * 2 + has(c.textures, '날것의 밴드 사운드') * 2 + has(c.content, '악기 연주/커버') + (c.concert.includes('아직 없지만 꼭 가고 싶음') ? 1 : 0),
+    creator: has(c.content, '숏폼 챌린지 제작', '플레이리스트 만들기', '악기 연주/커버', '노래 커버', '덕질/리뷰 계정 운영') * 3 + has(c.content, '숏폼 챌린지 시청'),
+    explorer: Math.max(0, c.genres.length - 3) * 2 + has(c.apps, '스포티파이', '사운드클라우드', '애플뮤직') + (c.apps.length >= 3 ? 2 : 0)
+  };
+  const ranked = Object.entries(sc).sort((a, b) => b[1] - a[1]);
+  const [top, second] = ranked;
+  let adj = AXES[second[0]].adj;
+  if (second[0] === 'mood' && c.times.includes('새벽')) adj = '새벽 감성의';
+  if (second[0] === 'energy' && c.places.includes('운동할 때')) adj = '운동 루틴 책임지는';
+  const title = `${adj} ${AXES[top[0]].noun}`;
+  const keywords = [...c.genres.slice(0, 3), ...c.textures.slice(0, 2), c.bpm ? c.bpm.split(' ')[0] + ' 템포' : '', ...c.times.slice(0, 1).map(t => t + ' 리스너')].filter(Boolean);
+  const maxScore = Math.max(1, ...Object.values(sc));
+  return { title, emoji: AXES[top[0]].emoji, topAxis: top[0], secondAxis: second[0], scores: sc, maxScore, keywords, at: new Date().toISOString() };
+}
+
+const U = s => `<mark class="user">${esc(s)}</mark>`;          // 학생 원문 강조
+const joinU = arr => arr.map(U).join(', ');
+function soundtrackHTML(c) {
+  const artists = splitList(c.artists), songs = splitList(c.songs);
+  const p = [];
+  if (artists.length) p.push(`당신의 플레이리스트 맨 위에는 ${joinU(artists)}${artists.length > 1 ? '가 나란히' : '가'} 자리하고 있어요.`);
+  if (songs.length) p.push(`그중에서도 ${joinU(songs)}${songs.length > 1 ? '는' : '는'} 몇 번을 들어도 질리지 않는 '무한 반복' 트랙이죠.`);
+  if (c.story.trim()) p.push(`이 음악이 당신에게 어떤 의미인지, 당신은 이렇게 적었어요.<br>“${U(c.story.trim())}”`);
+  const g = c.genres.length ? `${joinU(c.genres)} 장르` : '';
+  const t = c.textures.length ? `${joinU(c.textures)}` : '';
+  if (g || t || c.bpm) p.push(`${g ? g + '를 중심으로, ' : ''}${c.bpm ? U(c.bpm.split(' (')[0]) + ' 템포' : ''}${t ? (c.bpm ? '의 ' : '') + t + ' 질감' : ''}에 끌리는 귀를 가졌어요.`);
+  if (c.places.length || c.times.length || c.apps.length) p.push(`${c.times.length ? joinU(c.times) + ', ' : ''}${c.places.length ? joinU(c.places) : ''}${c.apps.length ? ` ${joinU(c.apps)}${c.apps.length > 1 ? '를 오가며' : '로'}` : ''} 하루의 배경음악을 직접 고르는 사람이에요.`);
+  return p.map(x => `<p style="margin:0 0 10px">${x}</p>`).join('');
+}
+function consumptionCards(c, pr) {
+  const pct = k => Math.round(pr.scores[k] / pr.maxScore * 100);
+  const goodsOwned = c.goods.filter(g => g !== '구매 안 함');
+  const cards = [
+    { t: '🎧 음원', v: Math.min(100, 20 + c.apps.length * 20 + c.places.length * 8), d: c.apps.length ? `${joinU(c.apps)} 중심의 ${c.apps.length > 1 ? '멀티 플랫폼' : '원 플랫폼'} 리스너` : '이용 앱을 담지 않았어요', k: '스트리밍·알고리즘' },
+    { t: '🎤 공연', v: pct('live'), d: c.concert.length ? joinU(c.concert) : '공연 경험을 담지 않았어요', k: '라이브·페스티벌 시장' },
+    { t: '🛍️ 굿즈', v: pct('fandom'), d: goodsOwned.length ? `${joinU(goodsOwned)} 수집러` : '굿즈보다 음악 자체에 집중하는 타입', k: '팬덤·경험 소비' },
+    { t: '📱 숏폼·콘텐츠', v: pct('creator'), d: c.content.length ? joinU(c.content) : '콘텐츠 활동을 담지 않았어요', k: '숏폼 발견·참여형 소비' }
+  ];
+  return cards.map(x => `<div class="cs"><b>${x.t}</b><div class="meter"><i style="width:${Math.max(6, x.v)}%"></i></div>${x.d}<div class="muted small" style="margin-top:5px">↳ 산업 연결: ${x.k}</div></div>`).join('');
+}
+function profileCardHTML(vertical) {
+  const c = S.cart, pr = S.profile;
+  const artists = splitList(c.artists), songs = splitList(c.songs);
+  return `
+  <div class="igcard ${vertical ? 'vertical' : ''}" id="igcard">
+    <div class="ig-left">
+      <div class="ig-head">
+        <div class="ig-avatar">${pr.emoji}</div>
+        <div class="ig-stats">
+          <div><b>${c.genres.length}</b><span>장르</span></div>
+          <div><b>${artists.length}</b><span>최애 아티스트</span></div>
+          <div><b>${songs.length}</b><span>무한반복</span></div>
+        </div>
+      </div>
+      <div class="ig-name">${esc(me())} ${S.student.cls ? `<span class="muted">· ${esc(S.student.cls)}</span>` : ''} <span class="v">✔</span></div>
+      <div><div class="ig-label">[PROFILE]</div><div class="ig-title">${esc(pr.title)}</div></div>
+      <div class="ig-tags">${pr.keywords.map(k => '#' + esc(k.replace(/\s+/g, ''))).join(' ')}</div>
+      <div class="ig-hl">${(c.genres.length ? c.genres : ['음악']).slice(0, 6).map(g => `<div><i>${GENRE_EMOJI[g] || '🎵'}</i>${esc(g)}</div>`).join('')}</div>
+      <div class="muted small" style="margin-top:auto">나 사용설명서 · 생성 ${new Date(pr.at).toLocaleDateString('ko-KR')}</div>
+    </div>
+    <div class="ig-right">
+      <div><div class="ig-label">[MY SOUNDTRACK]</div><div class="ig-story">${soundtrackHTML(c)}</div></div>
+      <div><div class="ig-label">[CONSUMPTION STYLE]</div><div class="consume" style="margin-top:8px">${consumptionCards(c, pr)}</div></div>
+    </div>
+  </div>`;
+}
+function aiPrompt() {
+  const c = S.cart;
+  return `너는 청소년 음악 취향 분석가야. 아래 학생의 '음악 취향 장바구니' 데이터를 바탕으로 인스타그램 프로필 형식의 "나 사용설명서"를 작성해 줘.
+
+[규칙]
+- 학생이 직접 쓴 아티스트명, 곡명, 감정 서술 문장은 절대 바꾸거나 요약하지 말고 원문 그대로 인용해서 「」로 강조할 것.
+- 출력 형식: [PROFILE] 음악 페르소나 칭호 1개 + 대표 해시태그 5개 / [MY SOUNDTRACK] 원문을 살린 3~5문장 서사 분석 / [CONSUMPTION STYLE] 음원·공연·굿즈·숏폼 소비 성향 각 1~2문장 + 관련 음악 산업 트렌드 1개씩.
+- 중학생도 이해할 수 있는 친근한 말투.
+
+[데이터]
+- 주 이용 앱: ${c.apps.join(', ') || '-'}
+- 감상 장소/상황: ${c.places.join(', ') || '-'} / 시간대: ${c.times.join(', ') || '-'}
+- 선호 장르: ${c.genres.join(', ') || '-'}
+- 선호 BPM: ${c.bpm || '-'} / 음색·사운드: ${c.textures.join(', ') || '-'}
+- 공연 경험/희망: ${c.concert.join(', ') || '-'}
+- 굿즈: ${c.goods.join(', ') || '-'}
+- 콘텐츠 소비·생산: ${c.content.join(', ') || '-'}
+- 최애 아티스트: ${c.artists || '-'}
+- 무한 반복 곡: ${c.songs || '-'}
+- 듣는 상황과 감정(원문): ${c.story || '-'}
+- (참고) 앱 자동 분석 칭호: ${S.profile ? S.profile.title : '-'}`;
+}
+
+/* =========================================================
+   4. 평가 로직 (40점 루브릭)
+   ========================================================= */
+const MAP_SCORE = [4, 8, 12, 16, 20];
+function festItems() {
+  const f = S.fest;
+  return [
+    ['축제명', !!f.name.trim()],
+    ['슬로건', !!f.slogan.trim()],
+    ['일시·장소', !!(f.date.trim() && f.venue.trim())],
+    ['라인업 3팀 이상', f.lineup.filter(l => l.artist.trim()).length >= 3],
+    ['타임테이블', f.timetable.some(t => t.time.trim() && t.act.trim())],
+    ['셋리스트', f.setlist.some(s => s.song.trim())],
+    ['관람 안내', f.guide.trim().length >= 10],
+    ['세부 설명', f.detail.trim().length >= 20]
+  ];
+}
+function myComments() {
+  const mine = me();
+  const out = [];
+  S.board.filter(p => !p.sample && p.id !== S.report.postId).forEach(p => p.comments.forEach(c => { if (c.author === mine) out.push(c); }));
+  return out;
+}
+function countKeys(text, keys) { return keys.filter(k => text.includes(k)).length; }
+const INTRO_KEYS = ['장르', 'BPM', '템포', '빠른', '느린', '음색', '가사', '사운드', '리듬', '보컬', '멜로디', '분위기'];
+const INDUSTRY_KEYS = ['플랫폼', '스트리밍', '알고리즘', '팬덤', '공연', '페스티벌', '콘서트', '굿즈', '숏폼', '챌린지', '음반', '시장', '산업', '티켓', '밴드', '유통', '추천'];
+function constructive(fb) { return fb.good.trim().length >= 10 && fb.suggest.trim().length >= 15; }
+function evalAreas() {
+  const r = S.report, f = S.fest;
+  const introHits = countKeys(r.intro, INTRO_KEYS) + countKeys(r.intro, S.cart.genres);
+  const bodyHits = countKeys(r.body, INDUSTRY_KEYS);
+  const cm = myComments();
+  const disc = cm.filter(c => c.text.includes('[NEW DISCOVERY]'));
+  const items = festItems();
+  const okItems = items.filter(i => i[1]).length;
+  const validTracks = f.setlist.filter(s => ytId(s.url)).length;
+  const goodFb = S.feedback.filter(constructive);
+  const a1 = [
+    { label: 'AI 분석 결과를 바탕으로 자신의 음악 취향(장르, BPM, 음색, 가사 등)을 구체적으로 서술함',
+      auto: !!S.profile && r.intro.trim().length >= 80 && introHits >= 2,
+      why: `나 사용설명서 ${S.profile ? '생성 ✓' : '미생성'} · 서론 ${r.intro.trim().length}자(80자↑) · 취향 키워드 ${introHits}개(2개↑)` },
+    { label: '자신의 음악 취향과 관련된 음악의 산업적 특징(유통 플랫폼, 팬덤 문화, 공연 시장 등)을 파악하여 서술함',
+      auto: r.body.trim().length >= 80 && bodyHits >= 2,
+      why: `본론 ${r.body.trim().length}자(80자↑) · 산업 키워드 ${bodyHits}개(2개↑)` },
+    { label: '동료와의 음악 교류 활동에 성실히 참여함',
+      auto: !!r.postId && cm.length >= 1,
+      why: `보고서 게시 ${r.postId ? '✓' : '✗'} · 친구 보고서 댓글 ${cm.length}개(1개↑)` },
+    { label: '타인의 음악 취향과 다양한 음악 작품을 탐색하고 패들렛에 기록함',
+      auto: disc.length >= 1,
+      why: `[NEW DISCOVERY] 댓글 ${disc.length}개(1개↑)` }
+  ];
+  const a2 = [
+    { label: '필수 항목(축제명, 슬로건, 일시·장소, 라인업 3팀 이상, 타임테이블, 셋리스트, 관람 안내, 세부 설명)이 포함된 기획안을 완성함',
+      auto: okItems === 8, why: `필수 항목 ${okItems}/8 · 미완성: ${items.filter(i => !i[1]).map(i => i[0]).join(', ') || '없음'}` },
+    { label: 'A5 홍보물을 완성하여 제출함',
+      auto: S.booth.posterMade && !!f.name.trim(), why: `A5 포스터 ${S.booth.posterMade ? '생성 ✓' : '미생성'} (Canva/미리캔버스 제작 시 교사 '인정' 처리)` },
+    { label: '행사 셋리스트 청음 부스를 운영함',
+      auto: validTracks >= 1 && S.booth.qrMade, why: `유튜브 링크 ${validTracks}곡 · 청음 QR ${S.booth.qrMade ? '생성 ✓' : '미생성'}` },
+    { label: '동료의 음악 행사에 대한 구체적이고 건설적인 피드백을 작성함',
+      auto: goodFb.length >= 1, why: `건설적 피드백 ${goodFb.length}개 / 전체 ${S.feedback.length}개` }
+  ];
+  const resolve = (arr, man) => arr.map((x, i) => ({ ...x, final: man[i] === 1 ? true : man[i] === -1 ? false : x.auto, man: man[i] }));
+  const A1 = resolve(a1, S.manual.a1), A2 = resolve(a2, S.manual.a2);
+  const s1 = MAP_SCORE[A1.filter(x => x.final).length], s2 = MAP_SCORE[A2.filter(x => x.final).length];
+  return { A1, A2, s1, s2, total: S.absent ? 3 : s1 + s2 };
+}
+
+/* =========================================================
+   5. 화면(View) 렌더링
+   ========================================================= */
+const NAV = [
+  ['home', '🏠', '홈'], ['cart', '🛒', '장바구니'], ['profile', '🪪', '나 사용설명서'],
+  ['report', '📝', '1차시 보고서'], ['fest', '🎪', '2차시 축제'], ['booth', '🎧', '3차시 청음 부스'], ['eval', '✅', '평가']
+];
+function renderNav() {
+  $('#nav').innerHTML = NAV.map(([k, i, l]) => `<button class="${S.view === k ? 'on' : ''}" data-nav="${k}" title="${l}">${i} <span class="lbl">${l}</span></button>`).join('');
+}
+
+const VIEWS = {};
+
+VIEWS.home = () => `
+  <div class="card hero">
+    <div class="small" style="font-weight:900;letter-spacing:2px">DATA-DRIVEN MUSIC FESTIVAL PROJECT · 3차시 · 40점</div>
+    <h1>데이터 기반 나의 음악 취향 분석 &amp;<br>뮤직 페스티벌 기획</h1>
+    <div>쇼핑하듯 담는 취향 데이터 → 나 사용설명서 → 음악 산업 분석 → 700만 원 예산 축제 기획 → QR 청음 부스 갤러리 워크</div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h3>🎙️ 오프닝</h3>
+      <blockquote class="quote">
+        "여러분, 혹시 작년 한 해 대한민국 사람들이 영화관보다 콘서트와 페스티벌 티켓에 더 많은 돈을 썼다는 걸 알고 있나요? 이제 음악은 단순히 이어폰으로 '듣는 것'을 넘어, 나를 표현하고 현장에서 '경험하는' 1조 7천억 원 규모의 거대한 산업이 되었습니다.<br><br>
+        이번 3차시 동안 우리는 단순한 음악 소비자가 아니라 음악 산업을 이끄는 '프로듀서'이자 '공연 기획자'가 될 겁니다. 1차시에는 나만의 음악 취향 보고서를 작성하며 음악 시장을 분석하고, 2차시에는 700만 원의 예산을 진짜 기획자처럼 배정받아 우리만의 뮤직 페스티벌을 만듭니다. 마지막 3차시에는 A5 홍보물과 QR 청음 부스를 차려 서로의 축제를 체험하고 피드백을 나눕니다.<br><br>
+        <b>여러분이 좋아하는 아티스트와 음악이 어떻게 축제가 되고 산업이 되는지, 그 멋진 여정을 지금 시작해 봅시다!"</b>
+      </blockquote>
+    </div>
+    <div class="card">
+      <h3>🙋 내 정보</h3>
+      <div class="grid g2" style="gap:10px">
+        <div><label class="f">이름</label>${field('student.name', '예: 김연성')}</div>
+        <div><label class="f">학년-반-번호 / 모둠</label>${field('student.cls', '예: 2-3-15 / 3모둠')}</div>
+      </div>
+      <p class="muted">입력한 내용은 이 기기 브라우저에 자동 저장돼요. 다른 기기로 옮기거나 선생님께 제출할 땐 파일로 내보내세요.</p>
+      <div class="row">
+        <button class="blue" data-act="export">💾 내 데이터 파일로 내보내기</button>
+        <button data-act="import">📂 파일 불러오기</button>
+        <button class="ghost sm" data-act="reset">초기화</button>
+      </div>
+      <h3 style="margin-top:18px">📊 평가 한눈에</h3>
+      <div class="muted">영역 1. 음악 취향 데이터 보고서 (20점) · 영역 2. 축제 기획 및 홍보 (20점)<br>각 영역 4개 요소 충족 개수에 따라 20 / 16 / 12 / 8 / 4점</div>
+    </div>
+  </div>
+  <div class="flow" style="margin-top:16px">
+    ${[['cart', '사전', '🛒 음악 취향 장바구니', '취향을 쇼핑하듯 담고 최애 이야기를 적어요'],
+       ['profile', '사전', '🪪 나 사용설명서', 'AI가 만든 인스타 프로필형 분석 카드'],
+       ['report', '1차시', '📝 취향 데이터 보고서', '서론·본론·결론 + NEW DISCOVERY 댓글'],
+       ['fest', '2차시', '🎪 축제 기획 & 예산 게임', '최대 700만 원, 음향·조명 제약 속 라인업 구성'],
+       ['booth', '3차시', '🎧 청음 부스 & 갤러리 워크', 'QR 청음 페이지, A5 포스터, 동료 피드백']]
+      .map(([k, s, t, d], i) => `<div class="card" data-nav="${k}"><span class="tag ${['pink', 'pink', 'blue', 'green', 'pink'][i]}">${s}</span><h3 style="margin-top:8px">${t}</h3><div class="muted">${d}</div></div>`).join('')}
+  </div>`;
+
+VIEWS.cart = () => {
+  const c = S.cart;
+  const secs = [
+    ['01', '음원 이용 패턴', `<label class="f">주 이용 앱</label>${chips('cart.apps', OPTIONS.apps)}<label class="f">주요 감상 장소·상황</label>${chips('cart.places', OPTIONS.places)}<label class="f">주요 시간대</label>${chips('cart.times', OPTIONS.times)}`],
+    ['02', '선호 장르 & 사운드', `<label class="f">장르 (여러 개 선택)</label>${chips('cart.genres', OPTIONS.genres)}<label class="f">선호 BPM</label>${radios('cart.bpm', OPTIONS.bpm)}<label class="f">음색·사운드 질감</label>${chips('cart.textures', OPTIONS.textures)}`],
+    ['03', '공연 & 굿즈 경험', `<label class="f">콘서트·페스티벌 관람 경험 및 희망</label>${chips('cart.concert', OPTIONS.concert)}<label class="f">구매한 굿즈</label>${chips('cart.goods', OPTIONS.goods)}`],
+    ['04', '콘텐츠 소비 & 생산', chips('cart.content', OPTIONS.content)],
+    ['05', '최애 장바구니 <span class="tag pink" style="margin-left:8px">필수</span>', `
+      <label class="f">가장 좋아하는 아티스트 3~5팀 (쉼표로 구분)</label>${field('cart.artists', '예: 데이식스, 아이유, 실리카겔')}
+      <label class="f">무한 반복하는 곡 (쉼표로 구분)</label>${field('cart.songs', '예: 한 페이지가 될 수 있게, Love wins all')}
+      <label class="f">그 음악을 듣는 구체적인 상황과 감정</label>${area('cart.story', '예: 시험 끝나고 버스 맨 뒷자리에서 창밖을 보며 들으면, 그동안 버틴 내가 조금 대견하게 느껴진다.', 4)}
+      <div class="muted small">✍️ 여기 적은 문장은 AI 분석 결과에 <b>원문 그대로</b> 실려요. 구체적으로 쓸수록 나다운 결과가 나와요.</div>`]
+  ];
+  return `
+  <div class="row between" style="margin-bottom:12px"><div><h2>🛒 음악 취향 장바구니</h2><div class="muted">사전 활동 · 마음에 드는 취향을 쇼핑하듯 장바구니에 담아 보세요.</div></div></div>
+  <div class="grid g-side">
+    <div>${secs.map(([n, t, b]) => `<div class="card shop-sec"><h3><span class="no">${n}</span>${t}</h3>${b}</div>`).join('')}</div>
+    <div class="card sticky" id="cartSummary">${cartSummary()}</div>
+  </div>`;
+};
+function cartReady() { const c = S.cart; return splitList(c.artists).length >= 1 && splitList(c.songs).length >= 1 && c.story.trim().length >= 15; }
+function cartSummary() {
+  const c = S.cart;
+  const items = [...c.apps, ...c.places, ...c.times, ...c.genres, ...(c.bpm ? [c.bpm] : []), ...c.textures, ...c.concert, ...c.goods, ...c.content];
+  const a = splitList(c.artists), s = splitList(c.songs);
+  return `
+    <h3>🧺 내 장바구니</h3>
+    <div class="cart-total">${items.length + a.length + s.length}<span class="muted" style="font-family:inherit;font-size:13px"> 개 담김</span></div>
+    <ul class="cart-list">
+      ${items.map(i => `<li><span>${esc(i)}</span><span class="muted">태그</span></li>`).join('')}
+      ${a.map(i => `<li><span>🎤 ${esc(i)}</span><span class="muted">아티스트</span></li>`).join('')}
+      ${s.map(i => `<li><span>🔁 ${esc(i)}</span><span class="muted">곡</span></li>`).join('')}
+      ${items.length + a.length + s.length === 0 ? '<li class="muted">아직 비어 있어요</li>' : ''}
+    </ul>
+    <div class="small">${a.length >= 3 ? '<span class="ok">✓ 아티스트 3팀 이상</span>' : `<span class="warn">아티스트 ${a.length}/3팀</span>`} ·
+      ${s.length ? '<span class="ok">✓ 반복 곡</span>' : '<span class="warn">반복 곡 필요</span>'} ·
+      ${c.story.trim().length >= 15 ? '<span class="ok">✓ 상황·감정</span>' : '<span class="warn">상황·감정 15자 이상</span>'}</div>
+    <button class="primary" style="width:100%;margin-top:12px" data-act="analyze" ${cartReady() ? '' : 'disabled'}>💳 결제하기 = AI 분석 시작</button>
+    <div class="muted small" style="margin-top:6px">05번 필수 항목을 채우면 결제 버튼이 활성화돼요.</div>`;
+}
+
+VIEWS.profile = () => {
+  if (!S.profile) return `<div class="card" style="text-align:center;padding:40px"><h2>🪪 아직 나 사용설명서가 없어요</h2><p class="muted">음악 취향 장바구니를 채우고 '결제하기'를 누르면 분석 카드가 만들어져요.</p><button class="primary" data-nav="cart">🛒 장바구니로 가기</button></div>`;
+  return `
+  <div class="row between" style="margin-bottom:12px">
+    <div><h2>🪪 나 사용설명서</h2><div class="muted">노란 형광펜 부분은 내가 직접 쓴 원문이에요. 1차시 보고서 서론에 활용하세요.</div></div>
+    <div class="row">
+      <button class="sm" data-act="cardOrient">${S.mobile ? '🖥️ 가로형 카드' : '📱 세로형 카드'}</button>
+      <button class="sm" data-act="analyze">🔄 다시 분석</button>
+      <button class="sm blue" data-act="saveCard">🖼️ 이미지 저장</button>
+      <button class="sm" data-act="copyPrompt">🤖 AI 심화 분석 프롬프트 복사</button>
+    </div>
+  </div>
+  ${profileCardHTML(S.mobile || window._cardVertical)}
+  <div class="notice" style="margin-top:16px">🤖 <b>AI 심화 분석</b>: '프롬프트 복사' 후 학교에서 허용한 AI 도구(Claude, ChatGPT 등)에 붙여넣으면 더 풍부한 서술형 분석을 받을 수 있어요. 프롬프트에는 <b>내가 쓴 원문을 바꾸지 말라</b>는 규칙이 들어 있어요.</div>`;
+};
+
+VIEWS.report = () => {
+  const r = S.report, pr = S.profile;
+  const hot = pr ? TRENDS.filter(t => t.axes.includes(pr.topAxis) || t.axes.includes(pr.secondAxis)).map(t => t.id) : [];
+  const frameBtns = k => `<div class="frames">${SENTENCE_FRAMES[k].map((f, i) => `<button class="sm ghost" data-frame="${k}" data-i="${i}">+ ${esc(f.length > 26 ? f.slice(0, 26) + '…' : f)}</button>`).join('')}</div>`;
+  const myPost = S.board.find(p => p.id === r.postId);
+  return `
+  <div class="row between" style="margin-bottom:12px">
+    <div><h2>📝 1차시 · 나의 음악 취향 데이터 보고서</h2><div class="muted">수행평가 1 (20점) · 서론 → 본론 → 결론 · 문장 틀 버튼을 눌러 시작해도 좋아요.</div></div>
+  </div>
+  <div class="grid g-side">
+    <div>
+      <div class="card">
+        ${pr ? `<div class="notice" style="margin-bottom:10px">🪪 내 페르소나: <b>${esc(pr.title)}</b> · ${pr.keywords.map(k => '#' + esc(k)).join(' ')}</div>` : `<div class="notice warn" style="margin-bottom:10px">나 사용설명서를 먼저 만들어 주세요. <button class="sm" data-nav="cart">장바구니로</button></div>`}
+        <label class="f">📍 서론 — 내 취향 및 페르소나 소개 <span class="muted">(장르·BPM·음색·가사 등을 구체적으로)</span></label>
+        ${frameBtns('intro')}${area('report.intro', 'AI 분석 결과에서 내가 직접 쓴 내용이 어떻게 반영되었는지도 써 보세요.', 5)}
+        <div class="muted small" data-live="intro"></div>
+        <label class="f">📍 본론 — 내 취향과 연계된 음악 산업 특징 분석 <span class="muted">(오른쪽 트렌드 카드 참고)</span></label>
+        ${frameBtns('body')}${area('report.body', '유통 플랫폼, 팬덤 문화, 공연 시장 등 내 취향과 연결된 산업의 특징을 써 보세요.', 6)}
+        <div class="muted small" data-live="body"></div>
+        <label class="f">📍 결론 — 음악 시장 제언 및 추천</label>
+        ${frameBtns('concl')}${area('report.concl', '음악 시장에 바라는 점, 친구에게 추천하는 곡/아티스트', 4)}
+        <div class="row" style="margin-top:12px">
+          <button class="primary" data-act="publish">${myPost ? '🔄 보드 게시물 업데이트' : '📌 보드에 게시하기'}</button>
+          <button data-act="copyReport">📋 패들렛용 텍스트 복사</button>
+        </div>
+      </div>
+    </div>
+    <div class="card sticky">
+      <h3>📊 음악 산업 분석 위젯</h3>
+      <div class="muted small" style="margin-bottom:8px">🔥 표시는 내 페르소나와 특히 관련 깊은 트렌드예요. 최신 통계는 한국콘텐츠진흥원(KOCCA) 음악산업백서에서 확인해 인용하세요.</div>
+      ${TRENDS.map(t => `<div class="trend ${hot.includes(t.id) ? 'hot' : ''}"><b>${hot.includes(t.id) ? '🔥 ' : ''}${t.title}</b><br>${t.text}<div class="muted small" style="margin-top:4px">키워드: ${t.keys.join(' · ')}</div></div>`).join('')}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="row between"><h3>🧷 반 보고서 보드 · NEW DISCOVERY 동료 스크랩 미션</h3><button class="sm" data-act="import">📂 친구 파일 불러오기</button></div>
+    <div class="muted" style="margin-bottom:10px">댓글 양식: <code>[NEW DISCOVERY] OO이의 보고서를 읽고 [장르/아티스트/곡명]을 새롭게 알게 되었어. 나도 들어보니 [이유] 때문에 관심이 가!</code><br>친구들이 '내 데이터 파일로 내보내기'한 파일을 불러오면 이 보드에 친구 보고서가 추가돼요. 수업에서 실제 패들렛을 쓴다면 패들렛에 바로 댓글을 달아도 돼요.</div>
+    <div class="board">${S.board.map(postHTML).join('')}</div>
+  </div>`;
+};
+function postHTML(p) {
+  const mine = p.id === S.report.postId;
+  return `<div class="card post">
+    <div class="row between"><b>${esc(p.author)}</b>${p.sample ? '<span class="tag">예시</span>' : mine ? '<span class="tag pink">내 글</span>' : ''}</div>
+    ${p.persona ? `<div class="muted small">🪪 ${esc(p.persona)}</div>` : ''}
+    <div class="sec"><b>서론</b> ${esc(p.intro)}</div><div class="sec"><b>본론</b> ${esc(p.body)}</div><div class="sec"><b>결론</b> ${esc(p.concl)}</div>
+    ${p.comments.map(c => `<div class="cmt ${c.text.includes('[NEW DISCOVERY]') ? 'disc' : ''}"><b>${esc(c.author)}</b> ${esc(c.text)}</div>`).join('')}
+    ${mine ? '' : `<div style="margin-top:8px">
+      <textarea rows="2" id="cm_${p.id}" placeholder="댓글을 남겨 보세요"></textarea>
+      <div class="row" style="margin-top:6px"><button class="sm ghost" data-act="discTpl" data-id="${p.id}">✨ NEW DISCOVERY 양식</button><button class="sm primary" data-act="comment" data-id="${p.id}">등록</button></div>
+    </div>`}
+  </div>`;
+}
+
+VIEWS.fest = () => {
+  const f = S.fest;
+  const tierOpts = sel => TIERS.map(t => `<option ${t.name === sel ? 'selected' : ''}>${t.name}</option>`).join('');
+  const boothOpts = sel => BOOTH_KINDS.map(t => `<option ${t.name === sel ? 'selected' : ''}>${t.name}</option>`).join('');
+  return `
+  <div class="row between" style="margin-bottom:12px">
+    <div><h2>🎪 2차시 · 데이터 기반 축제 기획 & 예산 게임</h2><div class="muted">수행평가 2-① · 단순한 가수 나열이 아니라 공간·타임테이블·부대 문화까지 기획해요.</div></div>
+  </div>
+  <div class="grid g-side">
+    <div>
+      <div class="card">
+        <h3>① 축제 유형 선택</h3>
+        <div class="type-pick">
+          <button class="${f.type === 'school' ? 'on' : ''}" data-radio="fest.type" data-val="school">🏫 <b>학교 축제</b><br><span class="small">연성제처럼 우리 학교 구성원 모두가 즐기는 축제</span></button>
+          <button class="${f.type === 'taste' ? 'on' : ''}" data-radio="fest.type" data-val="taste">🎧 <b>취향 맞춤형 축제</b><br><span class="small">펜타포트처럼 특정 장르·취향 중심의 축제</span></button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>② 기본 정보</h3>
+        <div class="grid g2" style="gap:10px">
+          <div><label class="f">축제명 *</label>${field('fest.name', '예: 연성 사운드 웨이브')}</div>
+          <div><label class="f">슬로건 *</label>${field('fest.slogan', '예: 우리의 취향이 무대가 되는 날')}</div>
+          <div><label class="f">일시 *</label>${field('fest.date', '예: 2026. 10. 30.(금) 13:00~17:00')}</div>
+          <div><label class="f">장소 *</label>${field('fest.venue', '예: 본관 앞 운동장 메인 스테이지')}</div>
+        </div>
+        <label class="f">배경 및 목적</label>
+        ${chips('fest.purpose', ['공동체', '안전', '학생 주도성', '취향 다양성 존중', '지역 연계'])}
+        <div style="margin-top:8px">${area('fest.purposeText', '이 축제를 왜 기획했나요? 우리 반 취향 데이터에서 무엇을 발견했나요?', 3)}</div>
+      </div>
+      <div class="card">
+        <div class="row between"><h3>③ 라인업 (3팀 이상) *</h3><button class="sm" data-add="lineup">+ 팀 추가</button></div>
+        <table class="rows"><tr><th style="width:150px">포지션</th><th>아티스트</th><th style="width:130px">가상 섭외비(원)</th><th></th></tr>
+        ${f.lineup.map((l, i) => `<tr><td><select data-path="fest.lineup.${i}.tier" data-tier="${i}">${tierOpts(l.tier)}</select></td><td><input data-path="fest.lineup.${i}.artist" value="${esc(l.artist)}" placeholder="아티스트/공연팀"></td><td><input type="number" step="50000" min="0" data-path="fest.lineup.${i}.fee" value="${l.fee}"></td><td><button class="sm ghost" data-del="lineup" data-i="${i}">✕</button></td></tr>`).join('')}
+        </table>
+        <details style="margin-top:10px"><summary class="small" style="cursor:pointer;font-weight:700">📖 라인업 용어 사전 (포지션별 가상 기준 섭외비)</summary>
+          <div class="glossary" style="margin-top:6px">${TIERS.map(t => `<b>${t.name}</b> (${won(t.fee)}) — ${t.desc}`).join('<br>')}</div></details>
+      </div>
+      <div class="card">
+        <div class="row between"><h3>④ 타임테이블 *</h3><button class="sm" data-add="timetable">+ 시간 추가</button></div>
+        <table class="rows"><tr><th style="width:130px">시간</th><th style="width:140px">무대/공간</th><th>내용</th><th></th></tr>
+        ${f.timetable.map((t, i) => `<tr><td><input data-path="fest.timetable.${i}.time" value="${esc(t.time)}" placeholder="13:00~13:30"></td><td><input data-path="fest.timetable.${i}.stage" value="${esc(t.stage)}" placeholder="메인 스테이지"></td><td><input data-path="fest.timetable.${i}.act" value="${esc(t.act)}" placeholder="오프닝 · 루키 공연"></td><td><button class="sm ghost" data-del="timetable" data-i="${i}">✕</button></td></tr>`).join('')}
+        </table>
+      </div>
+      <div class="card">
+        <div class="row between"><h3>⑤ 셋리스트 * <span class="muted small">(유튜브 링크 → 3차시 청음 부스에 자동 연결)</span></h3><button class="sm" data-add="setlist">+ 곡 추가</button></div>
+        <table class="rows"><tr><th style="width:140px">아티스트</th><th>곡명</th><th>유튜브 링크</th><th></th></tr>
+        ${f.setlist.map((s, i) => `<tr><td><input data-path="fest.setlist.${i}.artist" value="${esc(s.artist)}"></td><td><input data-path="fest.setlist.${i}.song" value="${esc(s.song)}"></td><td><input type="url" data-path="fest.setlist.${i}.url" value="${esc(s.url)}" placeholder="https://youtu.be/..."></td><td><button class="sm ghost" data-del="setlist" data-i="${i}">✕</button></td></tr>`).join('')}
+        </table>
+      </div>
+      <div class="card">
+        <div class="row between"><h3>⑥ 부대 문화 · 부스</h3><button class="sm" data-add="booths">+ 부스 추가</button></div>
+        <table class="rows"><tr><th style="width:170px">종류</th><th>부스 이름/내용</th><th style="width:130px">비용(원)</th><th></th></tr>
+        ${f.booths.map((b, i) => `<tr><td><select data-path="fest.booths.${i}.kind" data-boothkind="${i}">${boothOpts(b.kind)}</select></td><td><input data-path="fest.booths.${i}.name" value="${esc(b.name)}" placeholder="예: 나만의 플리 만들기 체험"></td><td><input type="number" step="10000" min="0" data-path="fest.booths.${i}.cost" value="${b.cost}"></td><td><button class="sm ghost" data-del="booths" data-i="${i}">✕</button></td></tr>`).join('')}
+        </table>
+      </div>
+      <div class="card">
+        <h3>⑦ 관람 안내 * &amp; 세부 설명 *</h3>
+        <label class="f">관람 안내 (입장 방법, 안전 수칙, 준비물 등)</label>${area('fest.guide', '예: 학생증 지참 입장 / 스탠딩 구역 펜스 안쪽 질서 유지 / 응원봉 지참 가능', 3)}
+        <label class="f">세부 설명 (공간 구성, 기획 의도, 부대 문화 등)</label>${area('fest.detail', '무대 배치, 부스 동선, 우리 반 취향 데이터가 라인업에 어떻게 반영되었는지 설명해요.', 4)}
+      </div>
+    </div>
+    <div class="card sticky" id="budgetPanel">${budgetPanel()}</div>
+  </div>`;
+};
+function budgetCalc() {
+  const f = S.fest;
+  const lineup = f.lineup.reduce((a, l) => a + num(l.fee), 0);
+  const booths = f.booths.reduce((a, b) => a + num(b.cost), 0);
+  const parts = [
+    ['음향', num(f.sound), '#3d5afe'], ['조명', num(f.light), '#ffb400'], ['라인업', lineup, '#ff4fa3'],
+    ['부스', booths, '#00c389'], ['홍보', num(f.promo), '#9b5cff'], ['기타', num(f.etc), '#888']
+  ];
+  const spent = parts.reduce((a, p) => a + p[1], 0);
+  return { parts, spent, budget: Math.min(num(f.budget), BUDGET_MAX), lineup, booths };
+}
+function suggestedBudget() {
+  // 기획안 구체성 → 추천 배정액 (교사 심사 참고용)
+  const f = S.fest, items = festItems().filter(i => i[1]).length;
+  let pts = items * 8;                                              // 최대 64
+  pts += Math.min(12, f.purpose.length * 3 + (f.purposeText.trim().length >= 40 ? 3 : 0));
+  pts += Math.min(12, Math.floor(f.detail.trim().length / 25));
+  pts += Math.min(6, f.booths.filter(b => b.name.trim()).length * 2);
+  pts += Math.min(6, f.timetable.filter(t => t.act.trim()).length);
+  const ratio = Math.min(100, pts) / 100;
+  return Math.round((3000000 + ratio * 4000000) / 100000) * 100000;
+}
+function budgetPanel() {
+  const f = S.fest, b = budgetCalc(), remain = b.budget - b.spent;
+  const items = festItems();
+  const warns = [];
+  if (!b.budget) warns.push('선생님께 기획안을 보여 주고 예산을 배정받으세요.');
+  if (num(f.sound) > SOUND_MAX) warns.push('음향비는 최대 260만 원이에요.');
+  if (num(f.light) > LIGHT_MAX) warns.push('조명비는 최대 40만 원이에요.');
+  if (b.budget && remain < 0) warns.push(`예산을 ${won(-remain)} 초과했어요!`);
+  if (!num(f.sound)) warns.push('음향비가 0원이면 공연을 할 수 없어요.');
+  return `
+    <h3>💰 예산 게임</h3>
+    <label class="f">교사 배정 예산 (최대 700만 원)</label>
+    <div class="row"><input type="number" step="100000" min="0" max="${BUDGET_MAX}" data-path="fest.budget" value="${f.budget}" style="flex:1"><button class="sm" data-act="suggestBudget" title="기획안 구체성 기준 추천액 적용">심사 추천 ${won(suggestedBudget())}</button></div>
+    <div class="muted small">추천액은 필수 항목·목적·세부 설명의 구체성으로 계산돼요. 최종 배정은 선생님이 결정해요.</div>
+    <label class="f">🔊 음향비 <span class="muted">(필수, 최대 260만 원)</span> — <b data-out="sound">${won(f.sound)}</b></label>
+    <input type="range" min="0" max="${SOUND_MAX}" step="50000" data-path="fest.sound" value="${f.sound}">
+    <label class="f">💡 조명비 <span class="muted">(최대 40만 원)</span> — <b data-out="light">${won(f.light)}</b></label>
+    <input type="range" min="0" max="${LIGHT_MAX}" step="10000" data-path="fest.light" value="${f.light}">
+    <div class="grid g2" style="gap:8px">
+      <div><label class="f">📣 홍보비</label><input type="number" step="10000" min="0" data-path="fest.promo" value="${f.promo}"></div>
+      <div><label class="f">🧰 기타(안전·운영)</label><input type="number" step="10000" min="0" data-path="fest.etc" value="${f.etc}"></div>
+    </div>
+    <div style="margin-top:14px" data-live="budget">${budgetSummary()}</div>
+    <h3 style="margin-top:16px">📋 필수 8대 항목</h3>
+    <ul class="checklist" data-live="items">${items.map(([n, ok]) => `<li>${ok ? '✅' : '⬜'} ${n}</li>`).join('')}</ul>
+    ${warns.length ? `<div class="notice" style="margin-top:10px">${warns.map(w => `<div class="warn">⚠️ ${w}</div>`).join('')}</div>` : '<div class="notice ok" style="margin-top:10px">✓ 예산 규칙을 모두 지켰어요!</div>'}`;
+}
+function budgetSummary() {
+  const b = budgetCalc(), remain = b.budget - b.spent, base = Math.max(b.budget, b.spent, 1);
+  return `
+    <div class="row between"><span class="muted">집행 ${won(b.spent)}</span><span class="${remain < 0 ? 'warn' : 'ok'}">잔액 ${won(remain)}</span></div>
+    <div class="bar" style="margin-top:6px">${b.parts.map(p => `<i style="width:${p[1] / base * 100}%;background:${p[2]}" title="${p[0]} ${won(p[1])}"></i>`).join('')}</div>
+    <div class="legend">${b.parts.map(p => `<s style="background:${p[2]}"></s><span>${p[0]}</span><b>${won(p[1])}</b>`).join('')}</div>`;
+}
+
+function boothPayload() {
+  const f = S.fest;
+  return { n: f.name, s: f.slogan, d: f.date, v: f.venue, t: f.setlist.filter(x => x.song.trim() || ytId(x.url)).map(x => [x.artist, x.song, ytId(x.url) || '']) };
+}
+function encodeBooth(p) { return btoa(unescape(encodeURIComponent(JSON.stringify(p)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function decodeBooth(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+function boothUrl() {
+  const p = boothPayload();
+  if (S.booth.qrMode === 'yt') {
+    const ids = p.t.map(t => t[2]).filter(Boolean);
+    return ids.length ? 'https://www.youtube.com/watch_videos?video_ids=' + ids.join(',') : '';
+  }
+  return location.href.split('#')[0] + '#booth=' + encodeBooth(p);
+}
+function tracksHTML(tracks) {
+  return `<div class="tracks">${tracks.map(([a, s, id]) => `<div class="track">
+      ${id ? `<div class="thumb" data-play="${id}" style="background-image:url(https://img.youtube.com/vi/${id}/hqdefault.jpg)"></div>` : `<div class="thumb" style="cursor:default">🎵</div>`}
+      <div class="meta"><b>${esc(s || '제목 없음')}</b><br><span class="muted">${esc(a)}</span>${id ? `<br><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" class="small">유튜브에서 열기 ↗</a>` : '<br><span class="warn small">유튜브 링크 없음</span>'}</div>
+    </div>`).join('') || '<div class="muted">셋리스트가 비어 있어요.</div>'}</div>`;
+}
+const RATE_KEYS = [['lineup', '라인업 구성'], ['plan', '기획·예산 타당성'], ['poster', '홍보물 디자인'], ['listen', '청음 경험']];
+let fbDraft = { to: '', lineup: 0, plan: 0, poster: 0, listen: 0, good: '', suggest: '' };
+VIEWS.booth = () => {
+  const p = boothPayload(), url = boothUrl();
+  const isFile = location.protocol === 'file:';
+  return `
+  <div class="row between" style="margin-bottom:12px">
+    <div><h2>🎧 3차시 · 디지털 청음 부스 & 갤러리 워크</h2><div class="muted">수행평가 2-② · 책상 위 세팅: [A5 포스터 + 기획 요약서 + 청음 QR + 피드백 포스트잇]</div></div>
+  </div>
+  <div class="grid g-side">
+    <div>
+      <div class="card">
+        <h3>🎶 ${esc(p.n || '축제명을 입력하세요')} 셋리스트 청음 미리보기</h3>
+        <div class="muted small" style="margin-bottom:10px">썸네일을 누르면 바로 재생돼요. 셋리스트는 2차시 축제 기획 화면에서 수정할 수 있어요.</div>
+        ${tracksHTML(p.t)}
+      </div>
+      <div class="card">
+        <h3>📝 동료 축제 피드백 작성</h3>
+        <div class="grid g2" style="gap:10px">
+          <div><label class="f">피드백 대상 (모둠/축제명)</label><input id="fb_to" value="${esc(fbDraft.to)}" placeholder="예: 3모둠 - 밴드 붐 페스타"></div>
+          <div><label class="f">작성자</label><input value="${esc(me())}" disabled></div>
+        </div>
+        <div class="grid g2" style="gap:6px;margin-top:10px">
+          ${RATE_KEYS.map(([k, l]) => `<div class="row between"><span class="small"><b>${l}</b></span><span class="stars">${[1, 2, 3, 4, 5].map(n => `<button data-star="${k}" data-n="${n}" class="${fbDraft[k] >= n ? 'on' : ''}">★</button>`).join('')}</span></div>`).join('')}
+        </div>
+        <label class="f">👍 좋았던 점 (구체적으로)</label><textarea id="fb_good" rows="2" placeholder="예: 헤드라이너 앞에 루키 밴드를 배치해서 분위기가 점점 올라가는 흐름이 좋았어.">${esc(fbDraft.good)}</textarea>
+        <label class="f">💡 개선 제안 (건설적으로)</label><textarea id="fb_suggest" rows="2" placeholder="예: 조명비가 적어서 야간 무대가 어두울 것 같아. 홍보비를 조금 줄여 조명에 쓰면 어떨까?">${esc(fbDraft.suggest)}</textarea>
+        <div class="muted small" id="fbHint" style="margin-top:6px"></div>
+        <button class="primary" style="margin-top:10px" data-act="addFeedback">📮 피드백 포스트잇 붙이기</button>
+        ${S.feedback.length ? `<h3 style="margin-top:18px">내가 남긴 피드백 (${S.feedback.length})</h3>${S.feedback.map((f, i) => `<div class="cmt ${constructive(f) ? 'disc' : ''}"><div class="row between"><b>→ ${esc(f.to)}</b><button class="sm ghost" data-act="delFeedback" data-i="${i}">✕</button></div>${RATE_KEYS.map(([k, l]) => `${l} ${'★'.repeat(f[k])}`).join(' · ')}<br>👍 ${esc(f.good)}<br>💡 ${esc(f.suggest)}</div>`).join('')}` : ''}
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>📲 청음 QR 코드</h3>
+        <div class="chips" style="margin-bottom:10px">
+          <button class="chip ${S.booth.qrMode === 'yt' ? 'on' : ''}" data-radio="booth.qrMode" data-val="yt">유튜브 재생목록</button>
+          <button class="chip ${S.booth.qrMode === 'app' ? 'on' : ''}" data-radio="booth.qrMode" data-val="app">청음 웹페이지</button>
+        </div>
+        <div class="muted small" style="margin-bottom:10px">${S.booth.qrMode === 'yt'
+          ? '셋리스트 유튜브 영상을 하나의 임시 재생목록으로 묶어요. 어디서나 바로 열려요.'
+          : '썸네일과 곡 정보가 담긴 청음 페이지로 연결돼요. 이 앱이 웹에 게시(예: GitHub Pages)되어 있어야 휴대폰에서 열려요.'}</div>
+        ${S.booth.qrMode === 'app' && isFile ? '<div class="notice warn small" style="margin-bottom:10px">⚠️ 지금은 내 컴퓨터 파일(file://)로 열려 있어 휴대폰에서 이 링크가 열리지 않아요. 유튜브 재생목록 모드를 쓰거나 앱을 웹에 게시하세요.</div>' : ''}
+        ${url ? `<div class="qrbox" id="qrbox"></div>
+          <div class="row" style="margin-top:10px"><button class="sm" data-act="copyBooth">🔗 링크 복사</button><a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener" style="text-decoration:none;padding:4px 10px;font-size:12px">↗ 열어 보기</a><button class="sm" data-act="downloadQR">⬇️ QR 저장</button></div>`
+          : '<div class="notice">셋리스트에 유튜브 링크를 1곡 이상 넣으면 QR이 만들어져요.</div>'}
+      </div>
+      <div class="card">
+        <h3>🖨️ A5 홍보 포스터</h3>
+        <div class="muted small">Canva·미리캔버스로 만든 포스터를 제출해도 돼요. 빠르게 만들고 싶다면 기획안으로 A5 포스터를 자동 생성해 인쇄할 수 있어요 (청음 QR 포함).</div>
+        <div class="row" style="margin-top:10px"><button class="blue" data-act="poster">🖼️ A5 포스터 만들기</button><button data-act="copySummary">📋 기획 요약서 복사</button></div>
+      </div>
+    </div>
+  </div>`;
+};
+
+VIEWS.eval = () => {
+  const E = evalAreas();
+  const rowsHTML = (arr, key) => arr.map((x, i) => `<tr>
+    <td style="width:28px"><b>${i + 1}</b></td><td>${x.label}<div class="muted small">${x.why}</div></td>
+    <td style="width:70px;text-align:center">${x.auto ? '✅' : '⬜'}<div class="muted small">자동</div></td>
+    <td style="width:120px"><select data-manual="${key}" data-i="${i}">
+      <option value="0" ${x.man === 0 ? 'selected' : ''}>자동 판정</option><option value="1" ${x.man === 1 ? 'selected' : ''}>교사 인정</option><option value="-1" ${x.man === -1 ? 'selected' : ''}>교사 미인정</option></select></td>
+    <td style="width:46px;text-align:center;font-size:20px">${x.final ? '🟢' : '⚪'}</td></tr>`).join('');
+  return `
+  <div class="row between" style="margin-bottom:12px">
+    <div><h2>✅ 수행평가 자동 체크리스트 (40점)</h2><div class="muted">학생 활동 데이터로 자동 판정 후, 교사가 요소별로 인정/미인정을 조정할 수 있어요.</div></div>
+    <div class="row"><button class="blue" data-act="copyEval">📋 평가 결과 복사</button><button data-act="export">💾 제출 파일 내보내기</button></div>
+  </div>
+  <div class="grid g3">
+    <div class="card"><div class="muted">영역 1 · 음악 취향 보고서</div><div class="score">${S.absent ? '-' : E.s1}<span class="muted" style="font-size:16px"> / 20</span></div></div>
+    <div class="card"><div class="muted">영역 2 · 축제 기획·홍보</div><div class="score">${S.absent ? '-' : E.s2}<span class="muted" style="font-size:16px"> / 20</span></div></div>
+    <div class="card" style="background:var(--accent);color:#fff"><div>${esc(me())} ${esc(S.student.cls)} · 총점</div><div class="score">${E.total}<span style="font-size:16px"> / 40</span></div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>영역 1. 음악 취향 데이터 보고서 작성하기 (20점)</h3>
+    <table class="rubric">${rowsHTML(E.A1, 'a1')}</table>
+  </div>
+  <div class="card">
+    <h3>영역 2. 축제 기획 및 홍보하기 (20점)</h3>
+    <table class="rubric">${rowsHTML(E.A2, 'a2')}</table>
+  </div>
+  <div class="card">
+    <div class="muted">채점 구조: 영역별 4개 요소 만족 20점 · 3개 16점 · 2개 12점 · 1개 8점 · 미만족 4점 (기본 점수 8점, 미인정 결시/불성실 참여 시 3점)</div>
+    <label class="row" style="margin-top:8px;font-weight:700"><input type="checkbox" data-act="absent" ${S.absent ? 'checked' : ''}> 미인정 결시 / 불성실 참여 (총점 3점 처리)</label>
+  </div>`;
+};
+
+/* 청음 페이지 단독 모드 (QR로 접속) */
+function renderBoothOnly(p) {
+  document.body.innerHTML = `<div class="booth-only">
+    <div class="card hero"><div class="small" style="font-weight:900;letter-spacing:2px">DIGITAL LISTENING BOOTH</div><h1>${esc(p.n || '뮤직 페스티벌')}</h1><div>${esc(p.s || '')}</div><div class="small" style="margin-top:6px">${esc([p.d, p.v].filter(Boolean).join(' · '))}</div></div>
+    <div class="card"><h3>🎶 셋리스트</h3>${tracksHTML(p.t || [])}</div>
+    <div class="card muted small">청음 후 부스의 피드백 포스트잇에 좋았던 점과 개선 제안을 남겨 주세요! 🎪</div></div>`;
+  document.body.addEventListener('click', e => { const t = e.target.closest('[data-play]'); if (t) playThumb(t); });
+}
+function playThumb(t) {
+  const id = t.dataset.play;
+  const fr = document.createElement('iframe');
+  fr.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+  fr.allow = 'autoplay; encrypted-media; picture-in-picture'; fr.allowFullscreen = true;
+  t.replaceWith(fr);
+}
+
+/* =========================================================
+   6. 렌더 & 이벤트
+   ========================================================= */
+function applyChrome() {
+  document.documentElement.dataset.theme = S.theme;
+  document.body.classList.toggle('mobile', S.mobile);
+  $('#themeSel').value = S.theme;
+  $('#viewToggle').textContent = S.mobile ? '🖥️ 데스크톱(16:9)' : '📱 모바일 세로(9:16)';
+}
+function render() {
+  applyChrome(); renderNav();
+  $('#view').innerHTML = VIEWS[S.view] ? VIEWS[S.view]() : VIEWS.home();
+  afterRender();
+}
+function afterRender() {
+  if (S.view === 'report') refreshLive();
+  if (S.view === 'booth') { drawQR(); fbHint(); }
+}
+function drawQR() {
+  const box = $('#qrbox'); if (!box) return;
+  box.innerHTML = '';
+  const url = boothUrl();
+  if (typeof QRCode === 'undefined') { box.innerHTML = '<div class="small" style="color:#111">QR 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인하세요.</div>'; return; }
+  try {
+    new QRCode(box, { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.L });
+    if (!S.booth.qrMade) { S.booth.qrMade = true; save(); }
+  } catch (e) { box.innerHTML = '<div class="small" style="color:#111">링크가 너무 길어 QR을 만들 수 없어요. 곡 수를 줄이거나 유튜브 재생목록 모드를 쓰세요.</div>'; }
+}
+function refreshLive() {
+  const r = S.report;
+  const li = $('[data-live="intro"]'), lb = $('[data-live="body"]');
+  if (li) li.innerHTML = `${r.intro.trim().length}자 · 취향 키워드 ${countKeys(r.intro, INTRO_KEYS) + countKeys(r.intro, S.cart.genres)}개 ${r.intro.trim().length >= 80 ? '<span class="ok">✓</span>' : '(80자 이상 권장)'}`;
+  if (lb) lb.innerHTML = `${r.body.trim().length}자 · 산업 키워드: ${INDUSTRY_KEYS.filter(k => r.body.includes(k)).join(', ') || '없음'} ${r.body.trim().length >= 80 ? '<span class="ok">✓</span>' : '(80자 이상 권장)'}`;
+}
+function fbHint() {
+  const h = $('#fbHint'); if (!h) return;
+  const g = fbDraft.good.trim().length, s = fbDraft.suggest.trim().length;
+  const soft = /(면 어떨까|면 좋겠|추천|제안|바꾸|추가|줄이|늘리)/.test(fbDraft.suggest);
+  h.innerHTML = `건설적 피드백 체크: ${g >= 10 ? '✅' : '⬜'} 좋았던 점 10자↑ · ${s >= 15 ? '✅' : '⬜'} 개선 제안 15자↑ · ${soft ? '✅' : '⬜'} 대안 제시 표현("~하면 어떨까?")`;
+}
+function refreshDerived(path) {
+  if (S.view === 'cart') $('#cartSummary').innerHTML = cartSummary();
+  if (S.view === 'report') refreshLive();
+  if (S.view === 'fest') {
+    // 입력 포커스를 유지하기 위해 패널의 일부만 갱신 (예산 입력 중이면 요약만)
+    if (path.startsWith('fest.budget') || path.startsWith('fest.sound') || path.startsWith('fest.light') || path.startsWith('fest.promo') || path.startsWith('fest.etc')) {
+      const o1 = $('[data-out="sound"]'), o2 = $('[data-out="light"]');
+      if (o1) o1.textContent = won(S.fest.sound); if (o2) o2.textContent = won(S.fest.light);
+      $('[data-live="budget"]').innerHTML = budgetSummary();
+    } else {
+      $('#budgetPanel').innerHTML = budgetPanel();
+    }
+  }
+}
+
+function go(v) { S.view = v; save(); render(); $('#view').scrollTop = 0; }
+
+const ROW_TPL = {
+  lineup: () => ({ tier: '미들 라인업', artist: '', fee: 400000 }),
+  timetable: () => ({ time: '', stage: '', act: '' }),
+  setlist: () => ({ artist: '', song: '', url: '' }),
+  booths: () => ({ kind: '체험 부스', name: '', cost: 300000 })
+};
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.path) {
+    let v = t.value;
+    if (t.type === 'number' || t.type === 'range') v = num(v);
+    if (t.dataset.path === 'fest.budget' && v > BUDGET_MAX) { v = BUDGET_MAX; }
+    setPath(t.dataset.path, v); save(); refreshDerived(t.dataset.path);
+  }
+  if (t.id === 'fb_to') fbDraft.to = t.value;
+  if (t.id === 'fb_good') { fbDraft.good = t.value; fbHint(); }
+  if (t.id === 'fb_suggest') { fbDraft.suggest = t.value; fbHint(); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.tier !== undefined) { const i = +t.dataset.tier; S.fest.lineup[i].fee = TIERS.find(x => x.name === t.value).fee; save(); render(); }
+  if (t.dataset.boothkind !== undefined) { const i = +t.dataset.boothkind; S.fest.booths[i].cost = BOOTH_KINDS.find(x => x.name === t.value).cost; save(); render(); }
+  if (t.dataset.manual) { S.manual[t.dataset.manual][+t.dataset.i] = +t.value; save(); render(); }
+  if (t.dataset.path === 'fest.budget') render();
+});
+$('#themeSel').addEventListener('change', e => { S.theme = e.target.value; save(); applyChrome(); });
+$('#viewToggle').addEventListener('click', () => { S.mobile = !S.mobile; save(); render(); });
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-nav],[data-chip],[data-radio],[data-add],[data-del],[data-act],[data-frame],[data-star],[data-play]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.nav) return go(d.nav);
+  if (d.chip) { const arr = getPath(d.chip); const i = arr.indexOf(d.val); i >= 0 ? arr.splice(i, 1) : arr.push(d.val); save(); return keepScroll(render); }
+  if (d.radio) { setPath(d.radio, getPath(d.radio) === d.val && d.radio === 'cart.bpm' ? '' : d.val); save(); return keepScroll(render); }
+  if (d.add) { S.fest[d.add].push(ROW_TPL[d.add]()); save(); return keepScroll(render); }
+  if (d.del) { S.fest[d.del].splice(+d.i, 1); save(); return keepScroll(render); }
+  if (d.frame) {
+    const ta = $(`textarea[data-path="report.${d.frame}"]`);
+    const frame = SENTENCE_FRAMES[d.frame][+d.i];
+    ta.value = (ta.value.trim() ? ta.value.trimEnd() + ' ' : '') + frame; ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
+    const pos = ta.value.lastIndexOf('['); if (pos >= 0) ta.setSelectionRange(pos, ta.value.indexOf(']', pos) + 1);
+    return;
+  }
+  if (d.star) { fbDraft[d.star] = +d.n; return keepScroll(render); }
+  if (d.play) return playThumb(t);
+  if (d.act && ACTIONS[d.act]) ACTIONS[d.act](t, e);
+});
+function keepScroll(fn) { const v = $('#view'), y = v.scrollTop; fn(); v.scrollTop = y; }
+
+const ACTIONS = {
+  analyze() {
+    if (!cartReady()) return toast('05번 최애 장바구니를 먼저 채워 주세요!');
+    S.profile = analyze(S.cart); save(); go('profile'); toast('✨ 나 사용설명서가 완성됐어요!');
+  },
+  cardOrient() { window._cardVertical = !window._cardVertical; if (S.mobile) { S.mobile = false; save(); } render(); },
+  saveCard() {
+    const el = $('#igcard');
+    if (typeof html2canvas === 'undefined') return toast('이미지 라이브러리를 불러오지 못했어요.');
+    html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true }).then(cv => {
+      const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = `나사용설명서_${me()}.png`; a.click();
+    });
+  },
+  copyPrompt() { copyText(aiPrompt(), 'AI 분석 프롬프트를 복사했어요!'); },
+  publish() {
+    const r = S.report;
+    if (!r.intro.trim() || !r.body.trim() || !r.concl.trim()) return toast('서론·본론·결론을 모두 작성해 주세요.');
+    let p = S.board.find(x => x.id === r.postId);
+    if (!p) { p = { id: uid(), author: me(), comments: [] }; S.board.unshift(p); r.postId = p.id; }
+    Object.assign(p, { author: me(), persona: S.profile ? S.profile.title : '', intro: r.intro, body: r.body, concl: r.concl });
+    save(); keepScroll(render); toast('📌 보드에 게시했어요!');
+  },
+  copyReport() {
+    const r = S.report;
+    copyText(`[${me()}의 음악 취향 데이터 보고서]${S.profile ? '\n페르소나: ' + S.profile.title : ''}\n\n■ 서론\n${r.intro}\n\n■ 본론\n${r.body}\n\n■ 결론\n${r.concl}`, '패들렛에 붙여넣을 수 있게 복사했어요!');
+  },
+  discTpl(t) {
+    const p = S.board.find(x => x.id === t.dataset.id);
+    const ta = $('#cm_' + p.id);
+    ta.value = `[NEW DISCOVERY] ${p.author}의 보고서를 읽고 [장르/아티스트/곡명]을 새롭게 알게 되었어. 나도 들어보니 [이유] 때문에 관심이 가!`;
+    ta.focus(); const s = ta.value.indexOf('['.repeat(1), 16); ta.setSelectionRange(s, ta.value.indexOf(']', s) + 1);
+  },
+  comment(t) {
+    const p = S.board.find(x => x.id === t.dataset.id);
+    const ta = $('#cm_' + p.id), text = ta.value.trim();
+    if (!text) return toast('댓글 내용을 입력해 주세요.');
+    if (/\[(장르\/아티스트\/곡명|이유)\]/.test(text)) return toast('[ ] 빈칸을 내 말로 채워 주세요!');
+    p.comments.push({ author: me(), text, at: Date.now() }); save(); keepScroll(render); toast('💬 댓글을 남겼어요!');
+  },
+  suggestBudget() { S.fest.budget = suggestedBudget(); save(); keepScroll(render); },
+  copyBooth() { copyText(boothUrl(), '청음 링크를 복사했어요!'); },
+  downloadQR() {
+    const img = $('#qrbox img'), cv = $('#qrbox canvas');
+    const src = (img && img.src && img.src.startsWith('data:')) ? img.src : cv ? cv.toDataURL('image/png') : null;
+    if (!src) return;
+    const a = document.createElement('a'); a.href = src; a.download = `청음QR_${S.fest.name || '축제'}.png`; a.click();
+  },
+  addFeedback() {
+    if (!fbDraft.to.trim()) return toast('피드백 대상을 입력해 주세요.');
+    if (!fbDraft.good.trim() || !fbDraft.suggest.trim()) return toast('좋았던 점과 개선 제안을 모두 써 주세요.');
+    S.feedback.push({ ...fbDraft, author: me(), at: Date.now() });
+    fbDraft = { to: '', lineup: 0, plan: 0, poster: 0, listen: 0, good: '', suggest: '' };
+    save(); keepScroll(render); toast('📮 피드백 포스트잇을 붙였어요!');
+  },
+  delFeedback(t) { S.feedback.splice(+t.dataset.i, 1); save(); keepScroll(render); },
+  poster() { openPoster(); },
+  copySummary() { copyText(festSummaryText(), '기획 요약서를 복사했어요!'); },
+  copyEval() {
+    const E = evalAreas();
+    const lines = a => a.map((x, i) => `${i + 1}. ${x.final ? '○' : '×'} ${x.label}`).join('\n');
+    copyText(`[수행평가 결과] ${me()} ${S.student.cls}\n영역1 ${S.absent ? '-' : E.s1}/20\n${lines(E.A1)}\n영역2 ${S.absent ? '-' : E.s2}/20\n${lines(E.A2)}\n총점 ${E.total}/40`, '평가 결과를 복사했어요!');
+  },
+  absent(t) { S.absent = t.checked; save(); keepScroll(render); },
+  export() {
+    const blob = new Blob([JSON.stringify({ app: 'musicFestivalLab', v: 1, ...S }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `음악축제_${me()}_${S.student.cls || ''}.json`.replace(/[\\/:*?"<>|]/g, '-'); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  },
+  import() { $('#fileIn').click(); },
+  reset() {
+    if (!confirm('이 기기에 저장된 모든 활동 내용을 지울까요? (되돌릴 수 없어요)')) return;
+    const theme = S.theme; S = defaultState(); S.theme = theme; save(); render(); toast('초기화했어요.');
+  }
+};
+
+// 파일 불러오기: 내 파일이면 복원, 친구 파일이면 보고서를 보드에 추가
+$('#fileIn').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  let added = 0, restored = false;
+  for (const f of files) {
+    try {
+      const d = JSON.parse(await f.text());
+      if (d.app !== 'musicFestivalLab') continue;
+      const theirName = (d.student && d.student.name) || '친구';
+      const isEmpty = !S.student.name && !S.profile;
+      if (isEmpty && files.length === 1 && confirm(`'${theirName}'의 파일이에요. 이 기기에 내 작업으로 복원할까요?\n(취소하면 친구 보고서로 보드에 추가해요)`)) {
+        const theme = S.theme; S = Object.assign(defaultState(), d); delete S.app; delete S.v; S.theme = theme; restored = true; continue;
+      }
+      const r = d.report || {};
+      if (r.intro || r.body || r.concl) {
+        const id = 'f_' + (r.postId || uid());
+        const existing = S.board.find(p => p.id === id);
+        const post = { id, author: theirName, persona: d.profile ? d.profile.title : '', intro: r.intro || '', body: r.body || '', concl: r.concl || '', comments: existing ? existing.comments : [] };
+        existing ? Object.assign(existing, post) : S.board.push(post);
+        added++;
+      }
+    } catch (err) { toast('파일을 읽지 못했어요: ' + f.name); }
+  }
+  save(); render();
+  toast(restored ? '내 작업을 복원했어요!' : added ? `친구 보고서 ${added}개를 보드에 추가했어요!` : '불러올 보고서가 없어요.');
+});
+
+/* =========================================================
+   7. A5 포스터 & 기획 요약서
+   ========================================================= */
+function festSummaryText() {
+  const f = S.fest, b = budgetCalc();
+  return `[축제 기획 요약서] ${f.name}
+슬로건: ${f.slogan}
+유형: ${f.type === 'school' ? '학교 축제' : '취향 맞춤형 축제'} / 일시: ${f.date} / 장소: ${f.venue}
+목적: ${f.purpose.join(', ')} ${f.purposeText}
+라인업: ${f.lineup.filter(l => l.artist).map(l => `${l.tier} ${l.artist}`).join(' / ')}
+타임테이블: ${f.timetable.filter(t => t.act).map(t => `${t.time} ${t.stage} ${t.act}`).join(' / ')}
+셋리스트: ${f.setlist.filter(s => s.song).map(s => `${s.artist} - ${s.song}`).join(' / ')}
+부스: ${f.booths.filter(x => x.name).map(x => `${x.kind} ${x.name}`).join(' / ')}
+예산: 배정 ${won(b.budget)} · 집행 ${won(b.spent)} (${b.parts.map(p => `${p[0]} ${won(p[1])}`).join(', ')})
+관람 안내: ${f.guide}
+세부 설명: ${f.detail}`;
+}
+function openPoster() {
+  const f = S.fest;
+  const byTier = n => f.lineup.filter(l => l.tier === n && l.artist.trim()).map(l => esc(l.artist));
+  const heads = [...byTier('헤드라이너'), ...byTier('첫 내한/쇼케이스')];
+  const subs = byTier('서브 헤드라이너');
+  const rest = [...byTier('미들 라인업'), ...byTier('언더카드'), ...byTier('루키')];
+  const colors = ['#ff4fa3', '#3d5afe', '#00c389', '#ffb400', '#9b5cff'];
+  const blobs = [0, 1, 2].map(i => `<div class="blob" style="width:${60 + i * 25}mm;height:${60 + i * 25}mm;background:${colors[(i + (f.name.length % 5)) % 5]};${['top:-20mm;right:-20mm', 'bottom:30mm;left:-30mm', 'bottom:-40mm;right:-10mm'][i]}"></div>`).join('');
+  $('#posterWrap').innerHTML = `
+    <div class="row no-print" style="justify-content:center;margin-bottom:14px">
+      <button class="primary" id="pPrint">🖨️ 인쇄 / PDF 저장 (A5)</button><button id="pClose">닫기</button>
+    </div>
+    <div class="poster" id="posterEl">${blobs}
+      <div class="pd">${f.type === 'school' ? 'SCHOOL MUSIC FESTIVAL' : 'MUSIC FESTIVAL'}</div>
+      <div class="pt">${esc(f.name || '축제명')}</div>
+      <div class="ps">${esc(f.slogan)}</div>
+      <div class="pd">📅 ${esc(f.date)}<br>📍 ${esc(f.venue)}</div>
+      <div style="margin-top:4mm">${heads.length ? `<div class="head">${heads.join(' · ')}</div>` : ''}${subs.length ? `<div class="sub">${subs.join(' · ')}</div>` : ''}${rest.length ? `<div class="rest">${rest.join(' · ')}</div>` : ''}</div>
+      <div class="tt">${f.timetable.filter(t => t.act.trim()).slice(0, 6).map(t => `${esc(t.time)} ${esc(t.stage)} ${esc(t.act)}`).join('<br>')}</div>
+      <div class="tt">${f.booths.filter(b => b.name.trim()).slice(0, 4).map(b => `◆ ${esc(b.name)}`).join('  ')}</div>
+      <div class="foot"><div class="tt" style="max-width:85mm">${esc(f.guide).slice(0, 160)}</div><div><div class="pqr" id="posterQR"></div><div class="pd" style="text-align:center;font-size:9px;margin-top:2px">SCAN · 셋리스트 청음</div></div></div>
+    </div>`;
+  $('#posterWrap').classList.add('show');
+  const url = boothUrl();
+  if (url && typeof QRCode !== 'undefined') { try { new QRCode($('#posterQR'), { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L }); } catch (e) {} }
+  else $('#posterQR').style.display = 'none';
+  $('#pClose').onclick = () => $('#posterWrap').classList.remove('show');
+  $('#pPrint').onclick = () => { document.body.classList.add('printing'); window.print(); };
+  S.booth.posterMade = true; save();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+
+/* =========================================================
+   8. 시작
+   ========================================================= */
+(function boot() {
+  const m = location.hash.match(/^#booth=(.+)$/);
+  if (m) {
+    document.documentElement.dataset.theme = 'neo';
+    try { return renderBoothOnly(decodeBooth(m[1])); } catch (e) { /* 손상된 링크면 일반 앱 표시 */ }
+  }
+  render();
+})();
+</script>
+</body>
+</html>
